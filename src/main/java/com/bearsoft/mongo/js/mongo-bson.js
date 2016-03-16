@@ -6,6 +6,9 @@ define(function () {
     var BsonUndefinedClass = Java.type('org.bson.BsonUndefined');
     var BsonNullClass = Java.type('org.bson.BsonNull');
     var BsonValueClass = Java.type('org.bson.BsonValue');
+//    var BsonObjectIdClass = Java.type('org.bson.BsonObjectId');
+//    var BsonJavaScriptClass = Java.type('org.bson.BsonJavaScript');
+//    var BsonDbPointerClass = Java.type('org.bson.BsonDbPointer');
     var BsonBooleanClass = Java.type('org.bson.BsonBoolean');
     var BsonDateClass = Java.type('org.bson.BsonDate');
     var BsonDoubleClass = Java.type('org.bson.BsonDouble');
@@ -13,9 +16,6 @@ define(function () {
     var BsonArrayClass = Java.type('org.bson.BsonArray');
     var BsonDocumentClass = Java.type('org.bson.BsonDocument');
     var BsonRegularExpressionClass = Java.type('org.bson.BsonRegularExpression');
-    var BsonObjectIdClass = Java.type('org.bson.BsonObjectId');
-    var BsonJavaScriptClass = Java.type('org.bson.BsonJavaScript');
-    var BsonDbPointerClass = Java.type('org.bson.BsonDbPointer');
     function toBson(aValue, aMapping) {
         aValue = EngineUtilsClass.unwrap(aValue);
         if (!aMapping)
@@ -33,7 +33,7 @@ define(function () {
             else if (type === 'boolean')
                 return new BsonBooleanClass(!!aValue);
             else if (type === 'object') {
-                if(aValue instanceof BsonObjectIdClass){
+                if(aValue instanceof BsonValueClass){// BsonObjectId, etc.
                     return aValue;
                 } else if (aValue instanceof Date) {
                     return new BsonDateClass(aValue.getTime());
@@ -52,8 +52,6 @@ define(function () {
                     return new BsonStringClass(aValue + '');
                 } else if (aValue instanceof Boolean) {
                     return new BsonBooleanClass(!!aValue);
-                } else if (aValue instanceof BsonValueClass){
-                    return aValue;
                 } else {
                     var isArray = aValue instanceof Array;
                     var bsoned = isArray ? new BsonArrayClass() : new BsonDocumentClass();

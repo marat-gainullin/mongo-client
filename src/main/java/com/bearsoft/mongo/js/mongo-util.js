@@ -140,7 +140,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             }
             uri = Public.clientUri(uri, options)
             try {
-                var client = new com.mongodb.MongoClients.create(uri)
+                var client = new com.mongodb.MongoClient(uri)
                 return {
                     uri: uri,
                     client: client
