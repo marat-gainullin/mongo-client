@@ -16,6 +16,11 @@
             <artifactId>mongodb-driver-async</artifactId>
             <version>3.0.4</version>
         </dependency>
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver</artifactId>
+            <version>3.2.2</version>
+        </dependency>
     </dependencies>
     <name>platypus-mongo-client</name>
 </project>

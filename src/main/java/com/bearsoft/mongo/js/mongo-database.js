@@ -6,7 +6,7 @@
 // The Apache License version 2.0:
 // http://www.opensource.org/licenses/apache2.0.php
 
-define(['./mongo-util', './mongo-error', '/mongo-client'], function (MongoUtil, MongoError, MongoClient) {
+define(['./mongo-util', './mongo-error', '/mongo-client', './mongo-bson'], function (MongoUtil, MongoError, MongoClient, BSON) {
     /**
      *
      * @class

@@ -6,7 +6,7 @@
 // The Apache License version 2.0:
 // http://www.opensource.org/licenses/apache2.0.php
 
-define(['./mongo-script-util', './mongo-error'], function (MongoInternals, MongoError) {
+define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (MongoInternals, MongoError, BSON) {
     var MongoUtil = function () {
         /** @exports Public as MongoUtil */
         var Public = {}
@@ -17,7 +17,7 @@ define(['./mongo-script-util', './mongo-error'], function (MongoInternals, Mongo
 
         Public.getVersion = function () {
             // Nashorn
-            return BSON.class.package.implementationVersion
+            return '0.1';
         }
 
         /**

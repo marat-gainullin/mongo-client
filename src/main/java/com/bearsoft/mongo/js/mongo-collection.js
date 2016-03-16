@@ -6,7 +6,7 @@
 // The Apache License version 2.0:
 // http://www.opensource.org/licenses/apache2.0.php
 
-define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
+define(['./mongo-util', './mongo-error', './mongo-bson'], function (MongoUtil, MongoError, BSON) {
     /**
      *
      * @class
@@ -458,7 +458,7 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
         this.aggregate = function (pipeline, options) {
             try {
                 pipeline = MongoUtil.documentList(pipeline)
-                pipeline = BSON.to(pipline)
+                pipeline = BSON.to(pipeline)
                 var i = this.collection.aggregate(pipeline)
                 if (MongoUtil.exists(options)) {
                     MongoUtil.aggregateIterable(i, options)

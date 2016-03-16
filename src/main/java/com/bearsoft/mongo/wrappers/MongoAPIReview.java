@@ -5,9 +5,14 @@
  */
 package com.bearsoft.mongo.wrappers;
 
+import com.mongodb.ConnectionString;
 import com.mongodb.async.client.MongoClient;
 import com.mongodb.async.client.MongoClientSettings;
 import com.mongodb.async.client.MongoClients;
+import org.bson.BsonDocument;
+import org.bson.BsonElement;
+import org.bson.BsonUndefined;
+import org.bson.BsonValue;
 
 /**
  *
@@ -16,7 +21,12 @@ import com.mongodb.async.client.MongoClients;
 public class MongoAPIReview {
 
     public void test() {
-        MongoClientSettings.builder().
+        BsonValue bv;
+        BsonUndefined bu;
+        BsonElement be;
+        BsonDocument bd;
+        MongoClientSettings mcs;
+        ConnectionString cs;
         MongoClient c = MongoClients.create();
     }
 
