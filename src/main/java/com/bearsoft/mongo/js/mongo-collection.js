@@ -6,7 +6,8 @@
 // The Apache License version 2.0:
 // http://www.opensource.org/licenses/apache2.0.php
 
-define(['./mongo-util', './mongo-error', './mongo-bson'], function (MongoUtil, MongoError, BSON) {
+define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], function (MongoUtil, MongoError, BSON, MongoCursor) {
+    var MongoCollectionClass = Java.type('com.mongodb.client.MongoCollection');
     /**
      *
      * @class
@@ -15,7 +16,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson'], function (MongoUtil, M
      */
     function MongoCollection(uri /* or collection */, options /* or database */, database) {
         var collection, database, client
-        if (uri instanceof com.mongodb.client.MongoCollection) {
+        if (uri instanceof MongoCollectionClass) {
             // Just wrap
             collection = uri // first argument
             database = options // second argument
@@ -660,7 +661,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson'], function (MongoUtil, M
          */
         this.insertOne = function (doc) {
             try {
-                this.collection.insertOne(doc)
+                this.collection.insertOne(BSON.to(doc))
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }

@@ -7,6 +7,11 @@
 // http://www.opensource.org/licenses/apache2.0.php
 
 define(['./mongo-script-util'], function (MongoInternals) {
+    var MongoCommandExceptionClass = Java.type('com.mongodb.MongoCommandException');
+    var MongoBulkWriteExceptionClass = Java.type('com.mongodb.MongoBulkWriteException');
+    var MongoServerExceptionClass = Java.type('com.mongodb.MongoServerException');
+    var MongoExceptionClass = Java.type('com.mongodb.MongoException');
+    var ThrowableClass = Java.type('java.lang.Throwable');
     /**
      *
      * @class
@@ -16,12 +21,12 @@ define(['./mongo-script-util'], function (MongoInternals) {
 
         this.exception = x
 
-        if (x instanceof com.mongodb.MongoCommandException) {
+        if (x instanceof MongoCommandExceptionClass) {
             this.code = x.code
             this.message = x.message
             this.serverAddress = String(x.serverAddress)
             this.response = x.response
-        } else if (x instanceof com.mongodb.MongoBulkWriteException) {
+        } else if (x instanceof MongoBulkWriteExceptionClass) {
             this.code = x.code
             this.message = x.message
             this.serverAddress = String(x.serverAddress)
@@ -52,14 +57,14 @@ define(['./mongo-script-util'], function (MongoInternals) {
             if (MongoInternals.exists(writeResult)) {
                 this.writeResult = MongoInternals.bulkWriteResult(writeResult)
             }
-        } else if (x instanceof com.mongodb.MongoServerException) {
+        } else if (x instanceof MongoServerExceptionClass) {
             this.code = x.code
             this.message = x.message
             this.serverAddress = String(x.serverAddress)
-        } else if (x instanceof com.mongodb.MongoException) {
+        } else if (x instanceof MongoExceptionClass) {
             this.code = x.code
             this.message = x.message
-        } else if (x instanceof java.lang.Throwable) {
+        } else if (x instanceof ThrowableClass) {
             this.message = x.message
         } else if (x instanceof MongoError) {
             this.code = x.code
@@ -95,6 +100,7 @@ define(['./mongo-script-util'], function (MongoInternals) {
         this.clean = function () {
             return MongoInternals.prune(this, ['code', 'message', 'serverAddress', 'response', 'writeConcern', 'writeErrors', 'writeResult'])
         }
+
     }
 
     MongoError.represent = function (x, full) {
@@ -102,11 +108,11 @@ define(['./mongo-script-util'], function (MongoInternals) {
         var out = new java.io.PrintWriter(s)
         if (x instanceof MongoError) {
             out.println('MongoDB error:')
-            out.println(String(Sincerity.JSON.to(x.clean(), true)))
+            out.println(String(JSON.stringify(x.clean())))
             if (full) {
                 x.exception.printStackTrace(out)
             }
-        } else if (x instanceof java.lang.Throwable) {
+        } else if (x instanceof ThrowableClass) {
             out.println('JVM error:')
             if (!full) {
                 out.println(String(x))
@@ -129,7 +135,7 @@ define(['./mongo-script-util'], function (MongoInternals) {
             }
         } else {
             out.println('Error:')
-            out.println(String(Sincerity.JSON.to(x, true)))
+            out.println(String(JSON.stringify(x, true)))
         }
         return String(s)
     }
@@ -146,5 +152,8 @@ define(['./mongo-script-util'], function (MongoInternals) {
     MongoError.DUPLICATE_KEY = 11000
     /** @constant */
     MongoError.DUPLICATE_KEY_ON_UPDATE = 11001
+
+    MongoError.prototype = new Error();
+
     return MongoError;
 });

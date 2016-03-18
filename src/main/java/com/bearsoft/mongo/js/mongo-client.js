@@ -7,6 +7,8 @@
 // http://www.opensource.org/licenses/apache2.0.php
 
 define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
+    var MongoClientClass = Java.type('com.mongodb.MongoClient');
+    var MongoNamespaceClass = Java.type('com.mongodb.MongoNamespace');
     /**
      * A single client instance manages a pool of connections to a MongoDB sever or cluster.
      * All {@link MongoDatabase}, {@link MongoConnection}, and {@link MongoCursor} instances
@@ -35,7 +37,7 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
     function MongoClient(uri, options) {
 
         var connection
-        if (uri instanceof com.mongodb.MongoClient) {
+        if (uri instanceof MongoClientClass) {
             // Just wrap
             connection = {
                 client: uri
@@ -126,6 +128,7 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
          */
         this.database = this.db = function (name) {
             try {
+                var MongoDatabase = require('./mongo-database');
                 return new MongoDatabase(this.client.getDatabase(name), this)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
@@ -147,8 +150,8 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
          */
         this.collection = function (fullName) {
             try {
-                if (!(fullName instanceof com.mongodb.MongoNamespace)) {
-                    fullName = new com.mongodb.MongoNamespace(fullName)
+                if (!(fullName instanceof MongoNamespaceClass)) {
+                    fullName = new MongoNamespaceClass(fullName)
                 }
                 var database = this.database(fullName.databaseName)
                 return database.collection(fullName.collectionName)

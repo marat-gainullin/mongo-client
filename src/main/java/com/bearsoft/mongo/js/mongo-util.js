@@ -1,3 +1,5 @@
+/* global Java */
+
 //
 // MongoDB API for Nashorn in AMD environment, supporting Java's Services API
 // especially for callbacks in async mode calls.
@@ -7,6 +9,23 @@
 // http://www.opensource.org/licenses/apache2.0.php
 
 define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (MongoInternals, MongoError, BSON) {
+    var ObjectIdClass = Java.type('org.bson.types.ObjectId');
+    var MongoClientURIClass = Java.type('com.mongodb.MongoClientURI');
+    var MongoClientOptionsBuilderClass = Java.type('com.mongodb.MongoClientOptions.Builder');
+    var CreateCollectionOptionsClass = Java.type('com.mongodb.client.model.CreateCollectionOptions');
+    var CountOptionsClass = Java.type('com.mongodb.client.model.CountOptions');
+    var IndexOptionsClass = Java.type('com.mongodb.client.model.IndexOptions');
+    var FindOneAndDeleteOptionsClass = Java.type('com.mongodb.client.model.FindOneAndDeleteOptions');
+    var FindOneAndReplaceOptionsClass = Java.type('com.mongodb.client.model.FindOneAndReplaceOptions');
+    var ReturnDocumentClass = Java.type('com.mongodb.client.model.ReturnDocument');
+    var FindOneAndUpdateOptionsClass = Java.type('com.mongodb.client.model.FindOneAndUpdateOptions');
+    var UpdateOptionsClass = Java.type('com.mongodb.client.model.UpdateOptions');
+    var InsertManyOptionsClass = Java.type('com.mongodb.client.model.InsertManyOptions');
+    var RenameCollectionOptionsClass = Java.type('com.mongodb.client.model.RenameCollectionOptions');
+    var BulkWriteOptionsClass = Java.type('com.mongodb.client.model.BulkWriteOptions');
+    var WriteModelClass = Java.type('com.mongodb.client.model.WriteModel');
+    var CursorTypeClass = Java.type('com.mongodb.CursorType');
+    
     var MongoUtil = function () {
         /** @exports Public as MongoUtil */
         var Public = {}
@@ -26,11 +45,11 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
          */
         Public.id = function (raw) {
             if (!Public.exists(raw)) {
-                return new org.bson.types.ObjectId()
-            } else if (raw instanceof org.bson.types.ObjectId) {
+                return new ObjectIdClass()
+            } else if (raw instanceof ObjectIdClass) {
                 return raw
             } else {
-                return new org.bson.types.ObjectId(raw)
+                return new ObjectIdClass(raw)
             }
         }
 
@@ -198,12 +217,12 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
          */
         Public.clientUri = function (uri, options) {
             try {
-                if (!(uri instanceof com.mongodb.MongoClientURI)) {
+                if (!(uri instanceof MongoClientURIClass)) {
                     if (Public.exists(options)) {
                         options = Public.clientOptions(options)
-                        uri = new com.mongodb.MongoClientURI(uri, options)
+                        uri = new MongoClientURIClass(uri, options)
                     } else {
-                        uri = new com.mongodb.MongoClientURI(uri)
+                        uri = new MongoClientURIClass(uri)
                     }
                 }
                 return uri
@@ -216,7 +235,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             // TODO: is this really necessary?
             var list = new java.util.ArrayList(array.length)
             for (var a in array) {
-                list.add(array[a])
+                list.add(BSON.to(array[a]))
             }
             return list
         }
@@ -251,7 +270,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
          * @throws {MongoError}
          */
         Public.clientOptions = function (options) {
-            if (!(options instanceof com.mongodb.MongoClientOptions.Builder)) {
+            if (!(options instanceof MongoClientOptionsBuilderClass)) {
                 var clientOptions = com.mongodb.MongoClientOptions.builder()
                 Public.applyOptions(clientOptions, options, ['alwaysUseMBeans', 'connectionsPerHost', 'connectTimeout', 'cursorFinalizerEnabled', 'description', 'heartbeatConnectTimeout', 'heartbeatFrequency', 'heartbeatSocketTimeout', 'localThreshold', 'maxConnectionIdleTime', 'maxConnectionLifeTime', 'maxWaitTime', 'minConnectionsPerHost', 'minHeartbeatFrequency', 'requiredReplicaSetName', 'serverSelectionTimeout', 'socketKeepAlive', 'socketTimeout', 'sslEnabled', 'sslInvalidHostNameAllowed', 'threadsAllowedToBlockForConnectionMultiplier'])
                 if (Public.exists(options.readPreference)) {
@@ -264,14 +283,14 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             }
 
             // This will convert native JavaScript types
-            options.codecRegistry(BSON.codecRegistry)
+            //options.codecRegistry(BSON.codecRegistry)
 
             return options
         }
 
         Public.createCollectionOptions = function (options) {
-            if (!(options instanceof com.mongodb.client.model.CreateCollectionOptions)) {
-                var createCollectionOptions = new com.mongodb.client.model.CreateCollectionOptions()
+            if (!(options instanceof CreateCollectionOptionsClass)) {
+                var createCollectionOptions = new CreateCollectionOptionsClass()
                 Public.applyOptions(createCollectionOptions, options, ['autoIndex', 'capped', 'maxDocuments', 'sizeInBytes', 'usePowerOf2Sizes'])
                 if (Public.exists(options.storageEngineOptions)) {
                     createCollectionOptions.storageEngineOptions(BSON.to(options.storageEngineOptions))
@@ -282,8 +301,8 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         }
 
         Public.countOptions = function (options) {
-            if (!(options instanceof com.mongodb.client.model.CountOptions)) {
-                var countOptions = new com.mongodb.client.model.CountOptions()
+            if (!(options instanceof CountOptionsClass)) {
+                var countOptions = new CountOptionsClass()
                 Public.applyOptions(countOptions, options, ['hintString', 'limit', 'skip'])
                 if (Public.exists(options.hint)) {
                     countOptions.hint(BSON.to(options.hint))
@@ -297,8 +316,8 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         }
 
         Public.createIndexOptions = function (options) {
-            if (!(options instanceof com.mongodb.client.model.IndexOptions)) {
-                var indexOptions = new com.mongodb.client.model.IndexOptions()
+            if (!(options instanceof IndexOptionsClass)) {
+                var indexOptions = new IndexOptionsClass()
                 Public.applyOptions(indexOptions, options, ['background', 'bits', 'bucketSize', 'defaultLanguage', 'languageOverride', 'max', 'min', 'name', 'sparse', 'sphereVersion', 'textVersion', 'unique', 'version'])
                 if (Public.exists(options.expireAfter)) {
                     indexOptions.expireAfter(options.expireAfter, java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -315,8 +334,8 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         }
 
         Public.findOneAndDeleteOptions = function (options) {
-            if (!(options instanceof com.mongodb.client.model.FindOneAndDeleteOptions)) {
-                var findOneAndDeleteOptions = new com.mongodb.client.model.FindOneAndDeleteOptions()
+            if (!(options instanceof FindOneAndDeleteOptionsClass)) {
+                var findOneAndDeleteOptions = new FindOneAndDeleteOptionsClass()
                 if (Public.exists(options.maxTime)) {
                     findOneAndDeleteOptions.maxTime(options.maxTime, java.util.concurrent.TimeUnit.MILLISECONDS)
                 }
@@ -332,8 +351,8 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         }
 
         Public.findOneAndReplaceOptions = function (options) {
-            if (!(options instanceof com.mongodb.client.model.FindOneAndReplaceOptions)) {
-                var findOneAndReplaceOptions = new com.mongodb.client.model.FindOneAndReplaceOptions()
+            if (!(options instanceof FindOneAndReplaceOptionsClass)) {
+                var findOneAndReplaceOptions = new FindOneAndReplaceOptionsClass()
                 Public.applyOptions(findOneAndReplaceOptions, options, ['upsert'])
                 if (Public.exists(options.maxTime)) {
                     findOneAndReplaceOptions.maxTime(options.maxTime, java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -342,15 +361,15 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                     findOneAndReplaceOptions.projection(BSON.to(options.projection))
                 }
                 if (Public.exists(options.returnDocument)) {
-                    if (options.returnDocument instanceof com.mongodb.client.model.ReturnDocument) {
+                    if (options.returnDocument instanceof ReturnDocumentClass) {
                         findOneAndReplaceOptions.returnDocument(options.returnDocument)
                     } else {
                         switch (options.returnDocument) {
                             case 'after':
-                                findOneAndReplaceOptions.returnDocument(com.mongodb.client.model.ReturnDocument.AFTER)
+                                findOneAndReplaceOptions.returnDocument(ReturnDocumentClass.AFTER)
                                 break
                             case 'before':
-                                findOneAndReplaceOptions.returnDocument(com.mongodb.client.model.ReturnDocument.BEFORE)
+                                findOneAndReplaceOptions.returnDocument(ReturnDocumentClass.BEFORE)
                                 break
                             default:
                                 throw new MongoError('Unsupported return document: ' + options.returnDocument)
@@ -366,8 +385,8 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         }
 
         Public.findOneAndUpdateOptions = function (options) {
-            if (!(options instanceof com.mongodb.client.model.FindOneAndUpdateOptions)) {
-                var findOneAndUpdateOptions = new com.mongodb.client.model.FindOneAndUpdateOptions()
+            if (!(options instanceof FindOneAndUpdateOptionsClass)) {
+                var findOneAndUpdateOptions = new FindOneAndUpdateOptionsClass()
                 Public.applyOptions(findOneAndUpdateOptions, options, ['upsert'])
                 if (Public.exists(options.maxTime)) {
                     findOneAndUpdateOptions.maxTime(options.maxTime, java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -376,15 +395,15 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                     findOneAndUpdateOptions.projection(BSON.to(options.projection))
                 }
                 if (Public.exists(options.returnDocument)) {
-                    if (options.returnDocument instanceof com.mongodb.client.model.ReturnDocument) {
+                    if (options.returnDocument instanceof ReturnDocumentClass) {
                         findOneAndUpdateOptions.returnDocument(options.returnDocument)
                     } else {
                         switch (options.returnDocument) {
                             case 'after':
-                                findOneAndUpdateOptions.returnDocument(com.mongodb.client.model.ReturnDocument.AFTER)
+                                findOneAndUpdateOptions.returnDocument(ReturnDocumentClass.AFTER)
                                 break
                             case 'before':
-                                findOneAndUpdateOptions.returnDocument(com.mongodb.client.model.ReturnDocument.BEFORE)
+                                findOneAndUpdateOptions.returnDocument(ReturnDocumentClass.BEFORE)
                                 break
                             default:
                                 throw new MongoError('Unsupported return document: ' + options.returnDocument)
@@ -400,8 +419,8 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         }
 
         Public.updateOptions = function (options) {
-            if (!(options instanceof com.mongodb.client.model.UpdateOptions)) {
-                var updateOptions = new com.mongodb.client.model.UpdateOptions()
+            if (!(options instanceof UpdateOptionsClass)) {
+                var updateOptions = new UpdateOptionsClass()
                 Public.applyOptions(updateOptions, options, ['upsert'])
                 options = updateOptions
             }
@@ -409,8 +428,8 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         }
 
         Public.insertManyOptions = function (options) {
-            if (!(options instanceof com.mongodb.client.model.InsertManyOptions)) {
-                var insertManyOptions = new com.mongodb.client.model.InsertManyOptions()
+            if (!(options instanceof InsertManyOptionsClass)) {
+                var insertManyOptions = new InsertManyOptionsClass()
                 Public.applyOptions(insertManyOptions, options, ['ordered'])
                 options = insertManyOptions
             }
@@ -418,8 +437,8 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         }
 
         Public.renameCollectionOptions = function (options) {
-            if (!(options instanceof com.mongodb.client.model.RenameCollectionOptions)) {
-                var renameCollectionOptions = new com.mongodb.client.model.RenameCollectionOptions()
+            if (!(options instanceof RenameCollectionOptionsClass)) {
+                var renameCollectionOptions = new RenameCollectionOptionsClass()
                 Public.applyOptions(renameCollectionOptions, options, ['dropTarget'])
                 options = renameCollectionOptions
             }
@@ -427,8 +446,8 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         }
 
         Public.bulkWriteOptions = function (options) {
-            if (!(options instanceof com.mongodb.client.model.BulkWriteOptions)) {
-                var bulkWriteOptions = new com.mongodb.client.model.BulkWriteOptions()
+            if (!(options instanceof BulkWriteOptionsClass)) {
+                var bulkWriteOptions = new BulkWriteOptionsClass()
                 Public.applyOptions(renameCollectionOptions, options, ['ordered'])
                 options = bulkWriteOptions
             }
@@ -476,7 +495,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
          * @throws {MongoError}
          */
         Public.writeModel = function (model) {
-            if (!(model instanceof com.mongodb.client.model.WriteModel)) {
+            if (!(model instanceof WriteModelClass)) {
                 switch (model.type) {
                     case 'deleteMany':
                         model = new com.mongodb.client.model.DeleteManyModel(model.filter)
@@ -571,18 +590,18 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         Public.findIterable = function (i, options) {
             Public.applyOptions(i, options, ['batchSize', 'limit', 'noCursorTimeout', 'oplogReplay', 'partial', 'skip'])
             if (Public.exists(options.cursorType)) {
-                if (options.cursorType instanceof com.mongodb.CursorType) {
+                if (options.cursorType instanceof CursorTypeClass) {
                     i.cursorType(options.cursorType)
                 } else {
                     switch (options.cursorType) {
                         case 'nonTailable':
-                            i.cursorType(com.mongodb.CursorType.NonTailable)
+                            i.cursorType(CursorTypeClass.NonTailable)
                             break
                         case 'tailable':
-                            i.cursorType(com.mongodb.CursorType.Tailable)
+                            i.cursorType(CursorTypeClass.Tailable)
                             break
                         case 'tailableAwait':
-                            i.cursorType(com.mongodb.CursorType.TailableAwait)
+                            i.cursorType(CursorTypeClass.TailableAwait)
                             break
                         default:
                             throw new MongoError('Unsupported cursor type: ' + options.cursorType)

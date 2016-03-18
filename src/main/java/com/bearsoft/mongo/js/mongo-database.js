@@ -6,7 +6,8 @@
 // The Apache License version 2.0:
 // http://www.opensource.org/licenses/apache2.0.php
 
-define(['./mongo-util', './mongo-error', '/mongo-client', './mongo-bson'], function (MongoUtil, MongoError, MongoClient, BSON) {
+define(['./mongo-util', './mongo-error', './mongo-client', './mongo-collection', './mongo-bson'], function (MongoUtil, MongoError, MongoClient, MongoCollection, BSON) {
+    var MongoDatabaseClass = Java.type('com.mongodb.client.MongoDatabase');
     /**
      *
      * @class
@@ -15,7 +16,7 @@ define(['./mongo-util', './mongo-error', '/mongo-client', './mongo-bson'], funct
      */
     function MongoDatabase(uri /* or database */, options /* or client */) {
         var database, client
-        if (uri instanceof com.mongodb.client.MongoDatabase) {
+        if (uri instanceof MongoDatabaseClass) {
             // Just wrap
             database = uri // first argument
             client = options // second argument
@@ -151,8 +152,8 @@ define(['./mongo-util', './mongo-error', '/mongo-client', './mongo-bson'], funct
         this.collection = function (name) {
             try {
                 // This will convert native JavaScript types
-                var collection = this.database.getCollection(name, BSON.documentClass)
-                return new MongoCollection(collection, this)
+                var collection = this.database.getCollection(name, BSON.documentClass.class)
+                return new MongoCollection(collection, this);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }

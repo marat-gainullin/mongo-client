@@ -9,6 +9,13 @@ import com.mongodb.ConnectionString;
 import com.mongodb.async.client.MongoClient;
 import com.mongodb.async.client.MongoClientSettings;
 import com.mongodb.async.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.event.CommandListener;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.security.MessageDigest;
+import org.bson.BsonDocument;
 
 /**
  *
@@ -17,9 +24,9 @@ import com.mongodb.async.client.MongoClients;
 public class MongoAPIReview {
 
     public static void main(String[] args) throws Throwable {
-        MongoClientSettings mcs;
-        ConnectionString cs;
-        MongoClient c = MongoClients.create();
+        
+        BsonDocument d = BsonDocument.parse("6");
+        d.asObjectId();
     }
 
 }

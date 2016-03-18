@@ -6,16 +6,22 @@ define(function () {
     var BsonUndefinedClass = Java.type('org.bson.BsonUndefined');
     var BsonNullClass = Java.type('org.bson.BsonNull');
     var BsonValueClass = Java.type('org.bson.BsonValue');
-//    var BsonObjectIdClass = Java.type('org.bson.BsonObjectId');
+    var BsonObjectIdClass = Java.type('org.bson.BsonObjectId');
+    var ObjectIdClass = Java.type('org.bson.types.ObjectId');
+    var BsonObjectMinKeyClass = Java.type('org.bson.BsonMinKey');
+    var BsonObjectMaxKeyClass = Java.type('org.bson.BsonMaxKey');
 //    var BsonJavaScriptClass = Java.type('org.bson.BsonJavaScript');
 //    var BsonDbPointerClass = Java.type('org.bson.BsonDbPointer');
     var BsonBooleanClass = Java.type('org.bson.BsonBoolean');
-    var BsonDateClass = Java.type('org.bson.BsonDate');
+    var BsonDateTimeClass = Java.type('org.bson.BsonDateTime');
+    var BsonTimestampClass = Java.type('org.bson.BsonTimestamp');
     var BsonDoubleClass = Java.type('org.bson.BsonDouble');
     var BsonStringClass = Java.type('org.bson.BsonString');
     var BsonArrayClass = Java.type('org.bson.BsonArray');
     var BsonDocumentClass = Java.type('org.bson.BsonDocument');
     var BsonRegularExpressionClass = Java.type('org.bson.BsonRegularExpression');
+    var BsonBinaryClass = Java.type('org.bson.BsonBinary');
+    var Base64Class = Java.type('java.util.Base64');
     function toBson(aValue, aMapping) {
         aValue = EngineUtilsClass.unwrap(aValue);
         if (!aMapping)
@@ -23,7 +29,7 @@ define(function () {
         var type = typeof aValue;
         if (type === 'undefined')
             return new BsonUndefinedClass();
-        else if(aValue === null)
+        else if (aValue === null)
             return new BsonNullClass();
         else {
             if (type === 'number')
@@ -33,10 +39,14 @@ define(function () {
             else if (type === 'boolean')
                 return new BsonBooleanClass(!!aValue);
             else if (type === 'object') {
-                if(aValue instanceof BsonValueClass){// BsonObjectId, etc.
+                if (aValue instanceof BsonValueClass) {// BsonObjectId, etc.
                     return aValue;
                 } else if (aValue instanceof Date) {
-                    return new BsonDateClass(aValue.getTime());
+                    return new BsonDateTimeClass(aValue.getTime());
+                } else if (undefined !== aValue.$date) {
+                    return new BsonDateTimeClass(aValue.$date);
+                } else if (undefined !== aValue.$timestamp) {
+                    return new BsonTimestampClass(aValue.$timestamp.t, aValue.$timestamp.i);
                 } else if (aValue instanceof RegExp) {
                     var flags = '';
                     if (aValue.global)
@@ -46,12 +56,20 @@ define(function () {
                     if (aValue.multiline)
                         flags += 'm';
                     return new BsonRegularExpressionClass(aValue.source, flags);
+                } else if (undefined !== aValue.$regex && undefined !== aValue.$options) {
+                    return new BsonRegularExpressionClass(aValue.$regex, aValue.$options);
+                } else if (undefined !== aValue.$binary && undefined !== aValue.$type) {
+                    return new BsonBinaryClass(aValue.$type, Base64Class.getDecoder().decode(aValue.$binary));
                 } else if (aValue instanceof Number) {
                     return new BsonDoubleClass(+aValue);
                 } else if (aValue instanceof String) {
                     return new BsonStringClass(aValue + '');
                 } else if (aValue instanceof Boolean) {
                     return new BsonBooleanClass(!!aValue);
+                } else if(aValue instanceof ObjectIdClass){
+                    return new BsonObjectIdClass(aValue);
+                } else if(aValue.$oid){
+                    return new BsonObjectIdClass(new ObjectIdClass(aValue.$oid));
                 } else {
                     var isArray = aValue instanceof Array;
                     var bsoned = isArray ? new BsonArrayClass() : new BsonDocumentClass();
@@ -79,5 +97,5 @@ define(function () {
             }
         }
     }
-    return {to: toBson, documentClass : BsonDocumentClass};
+    return {to: toBson, documentClass: BsonDocumentClass};
 });
