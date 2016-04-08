@@ -41,6 +41,8 @@ define(function () {
             else if (type === 'object') {
                 if (aValue instanceof BsonValueClass) {// BsonObjectId, etc.
                     return aValue;
+                } else if (aValue.$undefined) {
+                    return new BsonUndefinedClass();
                 } else if (aValue instanceof Date) {
                     return new BsonDateTimeClass(aValue.getTime());
                 } else if (undefined !== aValue.$date) {
@@ -62,6 +64,10 @@ define(function () {
                     return new BsonBinaryClass(aValue.$type, Base64Class.getDecoder().decode(aValue.$binary));
                 } else if (aValue instanceof Number) {
                     return new BsonDoubleClass(+aValue);
+                } else if (aValue.$minKey) {
+                    return new BsonObjectMinKeyClass(+aValue);
+                } else if (aValue.$maxKey) {
+                    return new BsonObjectMaxKeyClass(+aValue);
                 } else if (aValue instanceof String) {
                     return new BsonStringClass(aValue + '');
                 } else if (aValue instanceof Boolean) {

@@ -24,7 +24,6 @@ import org.bson.BsonDocument;
 public class MongoAPIReview {
 
     public static void main(String[] args) throws Throwable {
-        
         BsonDocument d = BsonDocument.parse("6");
         d.asObjectId();
     }
