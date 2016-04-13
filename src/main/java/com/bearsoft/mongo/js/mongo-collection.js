@@ -718,7 +718,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
                     options = MongoUtil.findOneAndDeleteOptions(options)
                     result = this.collection.findOneAndDelete(filter, options)
                 }
-                return result
+                return BSON.from(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -771,7 +771,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
                     options = MongoUtil.findOneAndReplaceOptions(options)
                     result = this.collection.findOneAndReplace(filter, replacement, options)
                 }
-                return result
+                return BSON.from(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -851,7 +851,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
                     options = MongoUtil.findOneAndUpdateOptions(options)
                     result = this.collection.findOneAndUpdate(filter, update, options)
                 }
-                return result
+                return BSON.from(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }

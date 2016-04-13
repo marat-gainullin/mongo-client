@@ -6,7 +6,7 @@
 // The Apache License version 2.0:
 // http://www.opensource.org/licenses/apache2.0.php
 
-define(['./mongo-error'], function (MongoError) {
+define(['./mongo-bson', './mongo-error'], function (BSON, MongoError) {
     /**
      * This class does not exactly represent a server cursor: it will create a cursor in the server only
      * when data is accessed, and will keep it open until {@link MongoCursor#close} is called.
@@ -46,7 +46,7 @@ define(['./mongo-error'], function (MongoError) {
          */
         this.first = function () {
             try {
-                return this.iterable.first()
+                return BSON.from(this.iterable.first())
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -90,7 +90,7 @@ define(['./mongo-error'], function (MongoError) {
                 if (null === this.cursor) {
                     this.cursor = iterable.iterator()
                 }
-                return this.cursor.next()
+                return BSON.from(this.cursor.next());
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }

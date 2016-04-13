@@ -15,6 +15,7 @@ import com.mongodb.event.CommandListener;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.MessageDigest;
+import java.util.Base64;
 import org.bson.BsonDocument;
 
 /**
@@ -24,6 +25,7 @@ import org.bson.BsonDocument;
 public class MongoAPIReview {
 
     public static void main(String[] args) throws Throwable {
+        Base64.getEncoder().en
         BsonDocument d = BsonDocument.parse("6");
         d.asObjectId();
     }

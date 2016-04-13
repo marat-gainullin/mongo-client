@@ -135,7 +135,7 @@ define(['./mongo-util', './mongo-error', './mongo-client', './mongo-collection',
                 } else {
                     result = this.database.runCommand(command, this.commandReadPreference, BSON.documentClass)
                 }
-                return result
+                return BSON.from(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
