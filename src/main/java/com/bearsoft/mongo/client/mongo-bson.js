@@ -26,6 +26,11 @@ define(function () {
     var BsonRegularExpressionClass = Java.type('org.bson.BsonRegularExpression');
     var BsonBinaryClass = Java.type('org.bson.BsonBinary');
     var Base64Class = Java.type('java.util.Base64');
+    var StringClass = Java.type('java.lang.String');
+    var DoubleClass = Java.type('java.lang.Double');
+
+    var base64ToStringEncoding = 'utf-8';
+    var int64Re = /BsonInt64{value=(.+)}/;
 
     function toBson(aValue, aMapping) {
         aValue = EngineUtilsClass.unwrap(aValue);
@@ -37,23 +42,34 @@ define(function () {
         else if (aValue === null)
             return new BsonNullClass();
         else {
-            if (type === 'number')
-                return new BsonDoubleClass(+aValue);
-            else if (type === 'string')
+            if (type === 'number') {
+                var nmb = +aValue;
+                if (nmb === Infinity) {
+                    return new BsonDoubleClass(DoubleClass.POSITIVE_INFINITY)
+                } else if (nmb === -Infinity)
+                    return new BsonDoubleClass(DoubleClass.NEGATIVE_INFINITY)
+                else
+                    return new BsonDoubleClass(nmb);
+            } else if (type === 'string')
                 return new BsonStringClass(aValue + '');
             else if (type === 'boolean')
                 return new BsonBooleanClass(!!aValue);
             else if (type === 'object') {
                 if (aValue instanceof BsonValueClass) {// BsonObjectId, etc.
                     return aValue;
-                } else if (aValue.$undefined) {
+                } else if (undefined !== aValue.$undefined) {
                     return new BsonUndefinedClass();
-                } else if (aValue.$numberLong) {
+                } else if (undefined !== aValue.$numberLong) {
                     return new BsonInt64Class(+aValue.$numberLong);
+                } else if (undefined !== aValue.$code) {
+                    if (undefined !== aValue.$scope)
+                        return new BsonJavaScriptWithScopeClass('' + aValue, toBson(aValue.$scope));
+                    else
+                        return new BsonJavaScriptClass('' + aValue);
                 } else if (aValue instanceof Date) {
                     return new BsonDateTimeClass(aValue.getTime());
                 } else if (undefined !== aValue.$date) {
-                    return new BsonDateTimeClass(aValue.$date);
+                    return new BsonDateTimeClass(+aValue.$date.$numberLong);
                 } else if (undefined !== aValue.$timestamp) {
                     return new BsonTimestampClass(aValue.$timestamp.t, aValue.$timestamp.i);
                 } else if (aValue instanceof RegExp) {
@@ -68,22 +84,29 @@ define(function () {
                 } else if (undefined !== aValue.$regex && undefined !== aValue.$options) {
                     return new BsonRegularExpressionClass(aValue.$regex, aValue.$options);
                 } else if (undefined !== aValue.$binary && undefined !== aValue.$type) {
-                    return new BsonBinaryClass(aValue.$type, Base64Class.getDecoder().decode(aValue.$binary));// ISO_8859_1 encoding
+                    var base64Text = new StringClass(aValue.$binary);
+                    return new BsonBinaryClass(aValue.$type, Base64Class.getDecoder().decode(base64Text.getBytes(base64ToStringEncoding)));
                 } else if (aValue instanceof Number) {
-                    return new BsonDoubleClass(+aValue);
-                } else if (aValue.$minKey) {
-                    return new BsonObjectMinKeyClass(+aValue);
-                } else if (aValue.$maxKey) {
-                    return new BsonObjectMaxKeyClass(+aValue);
+                    var nmb = +aValue;
+                    if (nmb === Infinity)
+                        return new BsonDoubleClass(DoubleClass.POSITIVE_INFINITY)
+                    else if (nmb === -Infinity)
+                        return new BsonDoubleClass(DoubleClass.NEGATIVE_INFINITY)
+                    else
+                        return new BsonDoubleClass(nmb);
+                } else if (undefined !== aValue.$minKey) {
+                    return new BsonObjectMinKeyClass();
+                } else if (undefined !== aValue.$maxKey) {
+                    return new BsonObjectMaxKeyClass();
                 } else if (aValue instanceof String) {
                     return new BsonStringClass(aValue + '');
                 } else if (aValue instanceof Boolean) {
-                    return new BsonBooleanClass(!!aValue);
+                    return new BsonBooleanClass(aValue == true);// Don't edit to !!aValue
                 } else if (aValue instanceof ObjectIdClass) {
                     return new BsonObjectIdClass(aValue);
-                } else if (aValue.$oid) {
+                } else if (undefined !== aValue.$oid) {
                     return new BsonObjectIdClass(new ObjectIdClass(aValue.$oid));
-                } else if (aValue.$ref && aValue.$id) {
+                } else if (undefined !== aValue.$ref && undefined !== aValue.$id) {
                     return new BsonDbPointerClass(aValue.$ref, new ObjectIdClass(aValue.$id));
                 } else {
                     var isArray = aValue instanceof Array;
@@ -121,20 +144,28 @@ define(function () {
             return undefined;
         else if (aValue instanceof BsonNullClass)
             return null;
-        else if (aValue instanceof BsonDoubleClass)
+        else if (aValue instanceof BsonDoubleClass) {
+            var dbl = aValue.doubleValue();
+            if (dbl == DoubleClass.POSITIVE_INFINITY)
+                return Infinity;
+            else if (dbl == DoubleClass.NEGATIVE_INFINITY)
+                return -Infinity;
+            else
+                return dbl;
+        } else if (aValue instanceof BsonInt32Class)
             return aValue.doubleValue();
-        else if (aValue instanceof BsonInt32Class)
-            return aValue.doubleValue();
-        else if (aValue instanceof BsonInt64Class)
-            return {$numberLong: '' + aValue};
-        else if (aValue instanceof BsonStringClass)
+        else if (aValue instanceof BsonInt64Class){
+            var int64Text = aValue + '';
+            var parsed = int64Text.match(int64Re);
+            return {$numberLong: parsed[1]};
+        }else if (aValue instanceof BsonStringClass)
             return aValue.getValue();
         else if (aValue instanceof BsonSymbolClass)
             return aValue.getSymbol();
-        else if (aValue instanceof BsonJavaScriptClass)
-            return aValue.getCode();
-        else if (aValue instanceof BsonJavaScriptWithScopeClass)
-            return aValue.getCode();
+        else if (aValue instanceof BsonJavaScriptClass){
+            return {$code: aValue.getCode()};
+        } else if (aValue instanceof BsonJavaScriptWithScopeClass)
+            return {$code: aValue.getCode(), $scope: fromBson(aValue.getScope())};
         else if (aValue instanceof BsonBooleanClass)
             return aValue.getValue();
         else if (aValue instanceof BsonDateTimeClass) {
@@ -144,11 +175,11 @@ define(function () {
         } else if (aValue instanceof BsonRegularExpressionClass) {
             return new RegExp(aValue.getPattern(), aValue.getOptions());
         } else if (aValue instanceof BsonBinaryClass) {
-            return {$type: +aValue.getType(), $binary: Base64Class.getEncoder().encodeToString(aValue.getData())};// ISO_8859_1 encoding
+            return {$type: +aValue.getType(), $binary: '' + new StringClass(Base64Class.getEncoder().encode(aValue.getData()), base64ToStringEncoding)};
         } else if (aValue instanceof BsonObjectMinKeyClass) {
-            return {$minKey: true};
+            return {$minKey: 1};
         } else if (aValue instanceof BsonObjectMaxKeyClass) {
-            return {$maxKey: true};
+            return {$maxKey: 1};
         } else if (aValue instanceof ObjectIdClass) {
             return {$oid: aValue.toHexString()};
         } else if (aValue instanceof BsonObjectIdClass) {
@@ -178,5 +209,14 @@ define(function () {
             return jsed;
         }
     }
-    return {to: toBson, from: fromBson, documentClass: BsonDocumentClass};
+    var module = {to: toBson, from: fromBson, documentClass: BsonDocumentClass};
+    Object.defineProperty(module, 'charset', {
+        get: function () {
+            return base64ToStringEncoding;
+        },
+        set: function (aValue) {
+            base64ToStringEncoding = aValue;
+        }
+    });
+    return module;
 });

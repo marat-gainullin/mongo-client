@@ -1,1 +1,4 @@
 target
+WEB-INF
+web
+private.properties

@@ -5,18 +5,8 @@
  */
 package com.bearsoft.mongo.wrappers;
 
-import com.mongodb.ConnectionString;
-import com.mongodb.async.client.MongoClient;
-import com.mongodb.async.client.MongoClientSettings;
-import com.mongodb.async.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.event.CommandListener;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.security.MessageDigest;
-import java.util.Base64;
-import org.bson.BsonDocument;
+import org.bson.BsonDouble;
+import org.bson.BsonInt64;
 
 /**
  *
@@ -25,9 +15,11 @@ import org.bson.BsonDocument;
 public class MongoAPIReview {
 
     public static void main(String[] args) throws Throwable {
-        Base64.getEncoder().en
-        BsonDocument d = BsonDocument.parse("6");
-        d.asObjectId();
+        BsonDouble bd = new BsonDouble(Double.NEGATIVE_INFINITY);
+        BsonInt64 blMax = new BsonInt64(Long.MAX_VALUE);
+        BsonInt64 blMin = new BsonInt64(Long.MIN_VALUE);
+        System.out.print(Long.MAX_VALUE);
+        System.out.print(Long.MIN_VALUE);
     }
 
 }
