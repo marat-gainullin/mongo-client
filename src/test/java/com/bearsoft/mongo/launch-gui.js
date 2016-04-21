@@ -12,7 +12,10 @@ define('forms', function (Forms, aModuleName) {
         };
 
         form.btnRun.onActionPerformed = function (event) {
-            require(['logger', './cases'], function (Logger, tests) {
+            require(['logger', './bson/cases', './async/cases'], function (Logger, bsonTests, asyncTests) {
+                var tests = [];
+                Array.prototype.push.apply(tests, bsonTests);
+                Array.prototype.push.apply(tests, asyncTests);
                 form.progress.minimum = 0;
                 form.progress.maximum = tests.length;
                 form.btnRun.enabled = false;

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?><Context path="/mondo-test">
+  <Realm className="org.apache.catalina.realm.DataSourceRealm" digest="MD5" localDataSource="true" roleNameCol="GROUP_NAME" userCredCol="USR_PASSWD" userNameCol="USR_NAME" userRoleTable="MTD_GROUPS" userTable="MTD_USERS"/>
+  <Resource driverClassName="org.apache.derby.jdbc.ClientDriver" name="jdbc:derby://localhost:1527/sample [app на APP]" password="" schema="APP" type="javax.sql.DataSource" url="jdbc:derby://localhost:1527/sample" username="app"/>
+  <Resource driverClassName="org.h2.Driver" name="test_db" password="" schema="PUBLIC" type="javax.sql.DataSource" url="jdbc:h2:tcp://localhost/~/test_db" username="sa"/>
+  <Resource driverClassName="oracle.jdbc.OracleDriver" name="eas" password="eas" schema="EAS" type="javax.sql.DataSource" url="jdbc:oracle:thin:@asvr:1521:adb" username="eas"/>
+  <Resource driverClassName="oracle.jdbc.OracleDriver" name="easHR" password="hr" schema="HR" type="javax.sql.DataSource" url="jdbc:oracle:thin:@asvr:1521:adb" username="hr"/>
+</Context>

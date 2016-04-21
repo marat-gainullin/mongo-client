@@ -9,8 +9,10 @@
 // http://www.opensource.org/licenses/apache2.0.php
 
 define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (MongoInternals, MongoError, BSON) {
+    var ArrayListClass = Java.type('java.util.ArrayList');
     var ObjectIdClass = Java.type('org.bson.types.ObjectId');
     var MongoClientURIClass = Java.type('com.mongodb.MongoClientURI');
+    var MongoClientOptionsClass = Java.type('com.mongodb.MongoClientOptions');
     var MongoClientOptionsBuilderClass = Java.type('com.mongodb.MongoClientOptions.Builder');
     var CreateCollectionOptionsClass = Java.type('com.mongodb.client.model.CreateCollectionOptions');
     var CountOptionsClass = Java.type('com.mongodb.client.model.CountOptions');
@@ -233,7 +235,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
 
         Public.documentList = function (array) {
             // TODO: is this really necessary?
-            var list = new java.util.ArrayList(array.length)
+            var list = new ArrayListClass(array.length)
             for (var a in array) {
                 list.add(BSON.to(array[a]))
             }
@@ -241,7 +243,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         }
 
         Public.indexSpecsList = function (fieldsOrSpecs) {
-            var list = new java.util.ArrayList(fieldsOrSpecs.length)
+            var list = new ArrayListClass(fieldsOrSpecs.length)
             for (var f in fieldsOrSpecs) {
                 var fieldOrSpec = fieldsOrSpecs[f]
                 if (Public.isString(fieldOrSpec)) {
@@ -255,7 +257,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         }
 
         Public.writeModelList = function (array) {
-            var list = new java.util.ArrayList(array.length)
+            var list = new ArrayListClass(array.length)
             for (var a in array) {
                 var entry = array[a]
                 entry = Public.writeModel(entry)
@@ -271,7 +273,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
          */
         Public.clientOptions = function (options) {
             if (!(options instanceof MongoClientOptionsBuilderClass)) {
-                var clientOptions = com.mongodb.MongoClientOptions.builder()
+                var clientOptions = MongoClientOptionsClass.builder()
                 Public.applyOptions(clientOptions, options, ['alwaysUseMBeans', 'connectionsPerHost', 'connectTimeout', 'cursorFinalizerEnabled', 'description', 'heartbeatConnectTimeout', 'heartbeatFrequency', 'heartbeatSocketTimeout', 'localThreshold', 'maxConnectionIdleTime', 'maxConnectionLifeTime', 'maxWaitTime', 'minConnectionsPerHost', 'minHeartbeatFrequency', 'requiredReplicaSetName', 'serverSelectionTimeout', 'socketKeepAlive', 'socketTimeout', 'sslEnabled', 'sslInvalidHostNameAllowed', 'threadsAllowedToBlockForConnectionMultiplier'])
                 if (Public.exists(options.readPreference)) {
                     clientOptions.readPreference(Public.readPreference(options.readPreference))
@@ -281,10 +283,6 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                 }
                 options = clientOptions
             }
-
-            // This will convert native JavaScript types
-            //options.codecRegistry(BSON.codecRegistry)
-
             return options
         }
 
@@ -467,7 +465,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             var readPreference
 
             if (Public.exists(options.tags)) {
-                var tagList = new java.util.ArrayList()
+                var tagList = new ArrayListClass()
                 for (var name in options.tags) {
                     var value = options.tags[value]
                     tagList.add(new com.mongodb.Tag(name, value))
