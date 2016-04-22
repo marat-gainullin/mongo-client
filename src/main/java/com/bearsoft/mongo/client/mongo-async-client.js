@@ -36,7 +36,7 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
             }
         } else {
             // Connect
-            connection = MongoUtil.connectClient(uri, options)
+            connection = MongoUtil.connectAsyncClient(uri, options)
         }
 
         /** @field */
@@ -44,9 +44,6 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
 
         /** @field */
         this.uri = connection.uri
-
-        /** @field */
-        this.description = this.client.mongoClientOptions.description
 
         /** @field */
         this.collectionsToProperties = false
@@ -57,7 +54,7 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
          */
         this.options = function () {
             try {
-                return this.client.mongoClientOptions
+                return this.client.settings
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -120,7 +117,7 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
          */
         this.database = this.db = function (name) {
             try {
-                var MongoDatabase = require('./mongo-database');
+                var MongoDatabase = require('./mongo-async-database');
                 return new MongoDatabase(this.client.getDatabase(name), this)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
@@ -202,14 +199,6 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
-        }
-
-        // Try to access the admin database
-
-        this.admin
-        try {
-            this.admin = this.database('admin')
-        } catch (x) {
         }
     }
 
@@ -318,32 +307,6 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
     MongoClient.connect = function (uri, options) {
         return new MongoClient(uri, options)
     }
-
-    /**
-     * Fetches the global {@link MongoClient} singleton, or lazily creates and sets a new one if
-     * it hasn't yet been set.
-     * <p>
-     * The client is set as 'mongoDb.client' in {@link applications.globals}. You can set it there
-     * directly, or you can set 'mongoDb.uri' and optionally 'mongoDb.options' to support lazy
-     * creation.
-     * <p>
-     * In Prudence, you can also set the global in {@link application.sharedGlobals}, to allow
-     * all applications to have access the same client. Note that {@link applications.globals}
-     * is checked first, so it has precedence.
-     *
-     * @throws {MongoError}
-     */
-    MongoClient.global = function (applicationService) {
-        var client = MongoUtil.getGlobal('client', applicationService)
-        if (!MongoUtil.exists(client)) {
-            var uri = MongoUtil.getGlobal('uri', applicationService)
-            if (MongoUtil.exists(uri)) {
-                var options = MongoUtil.getGlobal('options', applicationService)
-                client = new MongoClient(uri, options)
-                client = MongoUtil.setGlobal('client', client)
-            }
-        }
-        return client
-    }
+    
     return MongoClient;
 });

@@ -474,31 +474,5 @@ define(['./mongo-util', './mongo-error', './mongo-client', './mongo-collection',
         }
     }
 
-    /**
-     * Fetches the global {@link MongoDatabase} singleton, or lazily creates and sets a new one if
-     * it hasn't yet been set.
-     * <p>
-     * The database is set as 'mongoDb.database' in {@link applications.globals}. You can set it there
-     * directly, or use a string (the database name) to support lazy creation. Lazy creation requires
-     * a global client to be set, too. (See {@link MongoClient#global}.) 
-     * <p>
-     * In Prudence, you can also set the global in {@link application.sharedGlobals}, to allow
-     * all applications to have access the same client. Note that {@link applications.globals}
-     * is checked first, so it has precedence.
-     * 
-     * @throws {MongoError}
-     */
-    MongoDatabase.global = function (applicationService) {
-        var database = MongoUtil.getGlobal('database', applicationService)
-        if (MongoUtil.isString(database)) {
-            var client = MongoClient.global()
-            if (!MongoUtil.exists(client)) {
-                return null
-            }
-            database = client.database(database)
-            database = MongoUtil.setGlobal('database', database)
-        }
-        return database
-    }
     return MongoDatabase;
 });

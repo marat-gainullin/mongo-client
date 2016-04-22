@@ -327,31 +327,5 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
         return new MongoClient(uri, options)
     }
 
-    /**
-     * Fetches the global {@link MongoClient} singleton, or lazily creates and sets a new one if
-     * it hasn't yet been set.
-     * <p>
-     * The client is set as 'mongoDb.client' in {@link applications.globals}. You can set it there
-     * directly, or you can set 'mongoDb.uri' and optionally 'mongoDb.options' to support lazy
-     * creation.
-     * <p>
-     * In Prudence, you can also set the global in {@link application.sharedGlobals}, to allow
-     * all applications to have access the same client. Note that {@link applications.globals}
-     * is checked first, so it has precedence.
-     *
-     * @throws {MongoError}
-     */
-    MongoClient.global = function (applicationService) {
-        var client = MongoUtil.getGlobal('client', applicationService)
-        if (!MongoUtil.exists(client)) {
-            var uri = MongoUtil.getGlobal('uri', applicationService)
-            if (MongoUtil.exists(uri)) {
-                var options = MongoUtil.getGlobal('options', applicationService)
-                client = new MongoClient(uri, options)
-                client = MongoUtil.setGlobal('client', client)
-            }
-        }
-        return client
-    }
     return MongoClient;
 });

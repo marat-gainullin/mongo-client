@@ -27,7 +27,18 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
     var BulkWriteOptionsClass = Java.type('com.mongodb.client.model.BulkWriteOptions');
     var WriteModelClass = Java.type('com.mongodb.client.model.WriteModel');
     var CursorTypeClass = Java.type('com.mongodb.CursorType');
-    
+    var ConnectionStringClass = Java.type('com.mongodb.ConnectionString');
+    var MongoClientsClass = Java.type('com.mongodb.async.client.MongoClients');
+
+    var ClusterTypeClass = Java.type('com.mongodb.connection.ClusterType');
+    var MongoClientSettingsClass = Java.type('com.mongodb.async.client.MongoClientSettings');
+    var ClusterSettingsClass = Java.type('com.mongodb.connection.ClusterSettings');
+    var ConnectionPoolSettingsClass = Java.type('com.mongodb.connection.ConnectionPoolSettings');
+    var ServerSettingsClass = Java.type('com.mongodb.connection.ServerSettings');
+    var SslSettingsClass = Java.type('com.mongodb.connection.SslSettings');
+    var SocketSettingsClass = Java.type('com.mongodb.connection.SocketSettings');
+
+
     var MongoUtil = function () {
         /** @exports Public as MongoUtil */
         var Public = {}
@@ -130,22 +141,6 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             return value
         }
 
-        Public.setGlobal = function (name, value, applicationService) {
-            if (!MongoUtil.exists(applicationService)) {
-                applicationService = application
-            }
-            var fullName = 'mongoDb.' + name
-            // In Scripturian
-            value = applicationService.getGlobal(fullName, value)
-            try {
-                // In Prudence initialization scripts
-                app.globals.mongoDb = app.globals.mongoDb || {}
-                app.globals.mongoDb.client = Public.client
-            } catch (x) {
-            }
-            return value
-        }
-
         //
         // Driver utilities
         //
@@ -206,6 +201,127 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             try {
                 connection.collection = connection.database.getCollection(uri.collection, BSON.documentClass)
                 return connection
+            } catch (x if !(x instanceof MongoError)) {
+                throw new MongoError(x)
+            }
+        }
+
+        /**
+         * @throws {MongoError}
+         */
+        Public.connectAsyncClient = function (uri, options) {
+            if (!MongoUtil.exists(uri)) {
+                uri = 'mongodb://localhost/'
+            }
+            var settingsBuilder = MongoClientSettingsClass.builder();
+            var connectionString = uri instanceof ConnectionStringClass ? uri : new ConnectionStringClass(uri);
+
+            var clusterSettingsBuilder = ClusterSettingsClass.builder().applyConnectionString(connectionString);
+            if (MongoUtil.exists(options) && MongoUtil.exists(options.clusterSettings)) {
+                MongoUtil.applyOptions(clusterSettingsBuilder, options.clusterSettings, [
+                    'description',
+                    'requiredReplicaSetName',
+                    'serverSelectionTimeout',
+                    'maxWaitQueueSize'
+                ]);
+                if (MongoUtil.exists(options.clusterSettings.requiredClusterType)) {
+                    clusterSettingsBuilder = clusterSettingsBuilder.requiredClusterType(ClusterTypeClass.valueOf(options.clusterSettings.requiredClusterType));
+                }
+            }
+            settingsBuilder = settingsBuilder.clusterSettings(clusterSettingsBuilder.build());
+
+            var connectionPoolSettingsBuilder = ConnectionPoolSettingsClass.builder().applyConnectionString(connectionString);
+            if (MongoUtil.exists(options) && MongoUtil.exists(options.connectionPoolSettings)) {
+                MongoUtil.applyOptions(connectionPoolSettingsBuilder, options.connectionPoolSettings, [
+                    'maxSize',
+                    'minSize',
+                    'maxWaitQueueSize',
+                    'maxWaitTime',
+                    'maxConnectionLifeTime',
+                    'maxConnectionIdleTime',
+                    'maintenanceInitialDelay',
+                    'maintenanceFrequency'
+                ]);
+            }
+            settingsBuilder = settingsBuilder.connectionPoolSettings(connectionPoolSettingsBuilder.build());
+
+            var serverSettingsBuilder = ServerSettingsClass.builder();
+            if (MongoUtil.exists(options) && MongoUtil.exists(options.serverSettings)) {
+                MongoUtil.applyOptions(serverSettingsBuilder, options.serverSettings, [
+                    'heartbeatFrequency',
+                    'minHeartbeatFrequency'
+                ]);
+            }
+            settingsBuilder = settingsBuilder.serverSettings(serverSettingsBuilder.build());
+
+            settingsBuilder = settingsBuilder.credentialList(connectionString.getCredentialList());
+
+            var sslSettingsBuilder = SslSettingsClass.builder().applyConnectionString(connectionString);
+            if (MongoUtil.exists(options) && MongoUtil.exists(options.sslSettings)) {
+                MongoUtil.applyOptions(sslSettingsBuilder, options.sslSettings, [
+                    'enabled',
+                    'invalidHostNameAllowed'
+                ]);
+            }
+            settingsBuilder = settingsBuilder.sslSettings(sslSettingsBuilder.build());
+
+            var socketSettingsBuilder = SocketSettingsClass.builder().applyConnectionString(connectionString);
+            if (MongoUtil.exists(options) && MongoUtil.exists(options.socketSettings)) {
+                MongoUtil.applyOptions(socketSettingsBuilder, options.socketSettings, [
+                    'connectTimeout',
+                    'readTimeout',
+                    'keepAlive',
+                    'receiveBufferSize',
+                    'sendBufferSize'
+                ]);
+            }
+            settingsBuilder = settingsBuilder.socketSettings(socketSettingsBuilder.build());
+            try {
+                var client = MongoClientsClass.create(settingsBuilder.build());
+                return {
+                    uri: connectionString,
+                    client: client
+                };
+            } catch (x if !(x instanceof MongoError)) {
+                throw new MongoError(x);
+            }
+        };
+
+        /**
+         * @throws {MongoError}
+         */
+        Public.connectAsyncDatabase = function (uri, options) {
+            if (!Public.exists(uri)) {
+                uri = 'mongodb://localhost/default'
+            }
+            var uri = new ConnectionStringClass(uri);
+            if (!Public.exists(uri.database)) {
+                throw new MongoError('URI does not specify database: ' + uri)
+            }
+            var connection = Public.connectAsyncClient(uri, options);
+            try {
+                connection.database = connection.client.getDatabase(uri.database)
+                return connection;
+            } catch (x if !(x instanceof MongoError)) {
+                throw new MongoError(x)
+            }
+        }
+
+        /**
+         * @throws {MongoError}
+         */
+        Public.connectAsyncCollection = function (uri, options) {
+            if (!Public.exists(uri)) {
+                uri = 'mongodb://localhost/default.default'
+            }
+            var uri = new ConnectionStringClass(uri);
+            if (!Public.exists(uri.collection)) {
+                throw new MongoError('URI does not specify collection:' + uri)
+            }
+            var connection = Public.connectAsyncDatabase(uri, options)
+            try {
+                connection.collection = connection.database.getCollection(uri.collection, BSON.documentClass)
+                return connection;
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
