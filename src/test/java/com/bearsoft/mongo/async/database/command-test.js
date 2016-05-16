@@ -14,7 +14,12 @@ define(['../options'], function (Options) {
                     if (undefined == database)
                         throw 'client.database violation';
                     database.command({buildInfo: 1}, function (aResult) {
-                        complete();
+                        database.setCommandReadPreference({mode: 'nearest'});
+                        database.command({buildInfo: 1}, function (aResult) {
+                            complete();
+                        }, function (e) {
+                            complete(e);
+                        });
                     }, function (e) {
                         complete(e);
                     });
