@@ -26,6 +26,8 @@ define(function () {
     var BsonRegularExpressionClass = Java.type('org.bson.BsonRegularExpression');
     var BsonBinaryClass = Java.type('org.bson.BsonBinary');
     var Base64Class = Java.type('java.util.Base64');
+    var ListClass = Java.type('java.util.List');
+    var MapClass = Java.type('java.util.Map');
     var StringClass = Java.type('java.lang.String');
     var DoubleClass = Java.type('java.lang.Double');
 
@@ -154,15 +156,15 @@ define(function () {
                 return dbl;
         } else if (aValue instanceof BsonInt32Class)
             return aValue.doubleValue();
-        else if (aValue instanceof BsonInt64Class){
+        else if (aValue instanceof BsonInt64Class) {
             var int64Text = aValue + '';
             var parsed = int64Text.match(int64Re);
             return {$numberLong: parsed[1]};
-        }else if (aValue instanceof BsonStringClass)
+        } else if (aValue instanceof BsonStringClass)
             return aValue.getValue();
         else if (aValue instanceof BsonSymbolClass)
             return aValue.getSymbol();
-        else if (aValue instanceof BsonJavaScriptClass){
+        else if (aValue instanceof BsonJavaScriptClass) {
             return {$code: aValue.getCode()};
         } else if (aValue instanceof BsonJavaScriptWithScopeClass)
             return {$code: aValue.getCode(), $scope: fromBson(aValue.getScope())};
@@ -186,27 +188,29 @@ define(function () {
             return {$oid: aValue.getValue().toHexString()};
         } else if (aValue instanceof BsonDbPointerClass) {
             return {$ref: aValue.getNamespace(), $id: aValue.getId().toHexString()};
-        } else {
-            var isArray = aValue instanceof BsonArrayClass;
-            var jsed = isArray ? [] : {};
+        } else if (aValue instanceof MapClass) {
+            var jsed = {};
             aMapping.put(aValue, jsed);
-            if (isArray) {
-                for (var i = 0; i < aValue.size(); i++) {
-                    var pValue = aValue.get(i);
+            aValue.entrySet().forEach(function (aEntry) {
+                var p = aEntry.getKey();
+                if (isNaN(p)) {
+                    var pValue = aEntry.getValue();
                     var val = aMapping.containsKey(pValue) ? aMapping.get(pValue) : fromBson(pValue, aMapping);
-                    jsed.push(val);
+                    jsed[p + ''] = val;
                 }
-            } else {
-                aValue.entrySet().forEach(function (aEntry) {
-                    var p = aEntry.getKey();
-                    if (isNaN(p)) {
-                        var pValue = aEntry.getValue();
-                        var val = aMapping.containsKey(pValue) ? aMapping.get(pValue) : fromBson(pValue, aMapping);
-                        jsed[p + ''] = val;
-                    }
-                });
+            });
+            return jsed;
+        } else if (aValue instanceof ListClass) {
+            var jsed = [];
+            aMapping.put(aValue, jsed);
+            for (var i = 0; i < aValue.size(); i++) {
+                var pValue = aValue.get(i);
+                var val = aMapping.containsKey(pValue) ? aMapping.get(pValue) : fromBson(pValue, aMapping);
+                jsed.push(val);
             }
             return jsed;
+        } else {
+            return aValue;
         }
     }
     var module = {to: toBson, from: fromBson, documentClass: BsonDocumentClass};

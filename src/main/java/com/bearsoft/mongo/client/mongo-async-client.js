@@ -1,4 +1,4 @@
-define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
+define(['./mongo-util', './mongo-error', './mongo-async', './mongo-bson'], function (MongoUtil, MongoError, MongoAsync, Bson) {
     var MongoClientClass = Java.type('com.mongodb.async.client.MongoClient');
     var MongoNamespaceClass = Java.type('com.mongodb.MongoNamespace');
     /**
@@ -23,7 +23,7 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
      * @class
      * @param [uri]
      * @param [options]
-     * @see See the <a href="http://api.mongodb.org/java/current/index.html?com/mongodb/MongoClient.html">Java API</a>
+     * @see See the <a href="http://api.mongodb.org/java/current/index.html?com/mongodb/async/client/MongoClient.html">Java API</a>
      * @throws {MongoError}
      */
     function MongoClient(uri, options) {
@@ -54,7 +54,7 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
          */
         this.options = function () {
             try {
-                return this.client.settings
+                return this.client.getSettings()
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -69,7 +69,7 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
          */
         this.readPreference = function () {
             try {
-                return this.client.mongoClientOptions.readPreference
+                return this.client.getSettings().getReadPreference()
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -80,7 +80,7 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
          */
         this.writeConcern = function () {
             try {
-                return this.client.mongoClientOptions.writeConcern
+                return this.client.getSettings().getWriteConcern()
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -152,161 +152,107 @@ define(['./mongo-util', './mongo-error'], function (MongoUtil, MongoError) {
         /**
          * @param {Object} [options]
          * @param {Number} [options.batchSize]
-         * @returns {MongoDatabase[]}
-         * @throws {MongoError}
-         */
-        this.databases = function (options) {
-            try {
-                var databases = []
-                var i = this.client.listDatabaseNames().iterator()
-                try {
-                    if (MongoUtil.exists(options)) {
-                        MongoUtil.mongoIterable(i, options)
-                    }
-                    while (i.hasNext()) {
-                        databases.push(this.database(i.next()))
-                    }
-                } finally {
-                    i.close()
-                }
-                return databases
-            } catch (x if !(x instanceof MongoError)) {
-                throw new MongoError(x)
-            }
-        }
-
-        /**
-         * @param {Object} [options]
-         * @param {Number} [options.batchSize]
          * @returns {String[]}
          * @throws {MongoError}
          */
         this.databaseNames = function (options) {
             try {
-                var databaseNames = []
-                var i = this.client.listDatabaseNames().iterator()
-                try {
-                    if (MongoUtil.exists(options)) {
-                        MongoUtil.mongoIterable(i, options)
-                    }
-                    while (i.hasNext()) {
-                        databaseNames.push(i.next())
-                    }
-                } finally {
-                    i.close()
-                }
-                return databaseNames
+                var i = this.client.listDatabaseNames();
+                if (MongoUtil.exists(options))
+                    MongoUtil.mongoIterable(i, options);
+                return new MongoAsync.AsyncIterable(i);
             } catch (x if !(x instanceof MongoError)) {
-                throw new MongoError(x)
+                throw new MongoError(x);
             }
-        }
+        };
+
+        /**
+         * @returns {MongoAsync.AsyncIterable}
+         * @throws {MongoError}
+         */
+        this.databases = function (options) {
+            try {
+                var i = this.client.listDatabases(Bson.documentClass.class);
+                if (MongoUtil.exists(options))
+                    MongoUtil.listDatabasesIterable(i, options);
+                return new MongoAsync.AsyncIterable(i);
+            } catch (x if !(x instanceof MongoError)) {
+                throw new MongoError(x);
+            }
+        };
+
     }
 
     /**
-     * Creates a {@link MongoClient} instance.
+     * Create a new client with the given connection string and optional settings.
+     *
+     * @param {String} connectionString The connection string of the created client.
+     * @param {Object} options The settings to be applied to the creted client.
      * 
-     * @param {String|com.mongodb.MongoClientURI} [uri='mongodb://localhost/']
-     * @param {Object|com.mongodb.MongoClientOptions.Builder} [options]
-     * @param {String} [options.description]
+     * @return the client
+     * 
+     * @param {String} [options.clusterSettings.description]
      *  A description of this connection (useful for debugging)
-     * @param {Object} [options.readPreference]
-     * @param {String} [options.readPreference.mode='primary'] 
-     *  <ul>
-     *   <li>'primary': read only from the primary</li>
-     *   <li>'primaryPreferred': read from the primary if available, otherwise from a secondary</li>
-     *   <li>'secondary': read only from a secondary</li>
-     *   <li>'secondaryPreferred': read from a secondary if available, otherwise from the primary</li>
-     *   <li>'nearest'</li>: allow reads from either the primary the secondaries
-     *  </ul>
-     * @param {Object} [options.readPreference.tags]
-     *  The set of tags allowed for selection of secondaries. Not usable for 'primary' mode.
-     * @param {Object} [options.writeConcern]
-     * @param {Number} [options.writeConcern.w=1]
-     *  The write strategy.
-     *  <ul>
-     *   <li>0: Don't wait for acknowledgement from the server</li>
-     *   <li>1: Wait for acknowledgement, but don't wait for secondaries to replicate</li>
-     *   <li>&gt;=2: Wait for one or more secondaries to also acknowledge</li>
-     *  </ul>
-     * @param {Number} [options.writeConcern.wtimeout=0]
-     *  How long to wait for slaves before failing.
-     *  <ul>
-     *   <li>0: indefinite</li>
-     *   <li>&gt;0: time to wait in milliseconds</li>
-     *  </ul>
-     * @param {Boolean} [options.writeConcern.j=false]
-     *  If true block until write operations have been committed to the journal. Cannot be used in combination with fsync. Prior to MongoDB 2.6 this option was ignored if
-     *  the server was running without journaling. Starting with MongoDB 2.6 write operations will fail with an exception if this option is used when the server is running
-     *  without journaling.
-     * @param {Boolean} [options.writeConcern.fsync=false]
-     *  If true and the server is running without journaling, blocks until the server has synced all data files to disk. If the server is running with journaling, this acts
-     *  the same as the j option, blocking until write operations have been committed to the journal. Cannot be used in combination with j. In almost all cases the j flag
-     *  should be used in preference to this one.
-     * @param {Boolean} [options.cursorFinalizerEnabled=true]
-     *  Whether there is a a finalize method created that cleans up instances of MongoCursor that the client does not close. If you are careful to always call the close
-     *  method of MongoCursor, then this can safely be set to false.
-     * @param {Boolean} [options.alwaysUseMBeans=false]
-     *  Whether JMX beans registered by the driver should always be MBeans.
-     * @param {Boolean} [options.sslEnabled=false]
-     *  Whether to use SSL.
-     * @param {Boolean} [options.sslInvalidHostNameAllowed=false]
-     *  Whether invalid host names should be allowed if SSL is enabled. Take care before setting this to true, as it makes the application susceptible to man-in-the-middle
-     *  attacks.
-     * @param {String} [options.requiredReplicaSetName]
-     *  The required replica set name. With this option set, the MongoClient instance will
-     *  <ol>
-     *   <li>Connect in replica set mode, and discover all members of the set based on the given servers</li>
-     *   <li>Make sure that the set name reported by all members matches the required set name.</li>
-     *   <li>Refuse to service any requests if any member of the seed list is not part of a replica set with the required name.</li>
-     *  </ol>
-     * @param {Number} [options.localThreshold=15]
-     *  The local threshold. When choosing among multiple MongoDB servers to send a request, the MongoClient will only send that request to a server whose ping time is
-     *  less than or equal to the server with the fastest ping time plus the local threshold. For example, let's say that the client is choosing a server to send a query
-     *  when the read preference is 'secondary', and that there are three secondaries, server1, server2, and server3, whose ping times are 10, 15, and 16 milliseconds,
-     *  respectively. With a local threshold of 5 milliseconds, the client will send the query to either server1 or server2 (randomly selecting between the two).
-     * @param {Number} [options.serverSelectionTimeout=30000]
-     *  The server selection timeout in milliseconds, which defines how long the driver will wait for server selection to succeed before throwing an exception. A value of
-     *  0 means that it will timeout immediately if no server is available. A negative value means to wait indefinitely.
-     * @param {Number} [options.minConnectionsPerHost=0]
-     *  The minimum number of connections per host for this MongoClient instance. Those connections will be kept in a pool when idle, and the pool will ensure over time
-     *  that it contains at least this minimum number.
-     * @param {Number} [options.connectionsPerHost=100]
-     *  The maximum number of connections allowed per host for this MongoClient instance. Those connections will be kept in a pool when idle. Once the pool is exhausted,
-     *  any operation requiring a connection will block waiting for an available connection.
-     * @param {Number} [options.threadsAllowedToBlockForConnectionMultiplier=5]
-     *  This multiplier, multiplied with the connectionsPerHost setting, gives the maximum number of threads that may be waiting for a connection to become available from
-     *  the pool. All further threads will get an exception right away. For example if connectionsPerHost is 10 and threadsAllowedToBlockForConnectionMultiplier is 5, then
-     *  up to 50 threads can wait for a connection.
-     * @param {Number} [options.connectTimeout=10000]
-     *  The connection timeout in milliseconds. A value of 0 means no timeout. It is used solely when establishing a new connection.
-     * @param {Number} [options.maxWaitTime=120000]
-     *  The maximum wait time in milliseconds that a thread may wait for a connection to become available. A value of 0 means that it will not wait. A negative value means
-     *  to wait indefinitely.
-     * @param {Number} [options.maxConnectionIdleTime=0]
-     *  The maximum idle time of a pooled connection. A zero value indicates no limit to the idle time. A pooled connection that has exceeded its idle time will be closed
-     *  and replaced when necessary by a new connection.
-     * @param {Number} [options.maxConnectionLifeTime=0]
-     *  The maximum life time of a pooled connection. A zero value indicates no limit to the life time. A pooled connection that has exceeded its life time will be closed
-     *  and replaced when necessary by a new connection.
-     * @param {Boolean} [options.socketKeepAlive=false]
-     *  This flag controls the socket keep alive feature that keeps a connection alive through firewalls.
-     * @param {Number} [options.minHeartbeatFrequency=500]
-     *  Gets the minimum heartbeat frequency. In the event that the driver has to frequently re-check a server's availability, it will wait at least this long since the
-     *  previous check to avoid wasted effort.
-     * @param {Number} [options.heartbeatFrequency=10000]
-     *  The heartbeat frequency. This is the frequency that the driver will attempt to determine the current state of each server in the cluster.
-     * @param {Number} [options.heartbeatConnectTimeout=20000]
-     *  The connect timeout for connections used for the cluster heartbeat.
-     * @param {Number} [options.heartbeatSocketTimeout=20000]
-     *  The socket timeout for connections used for the cluster heartbeat.
-     * @param {Number} [options.socketTimeout=0]
-     *  The socket timeout in milliseconds. It is used for I/O socket read and write operations. 0 means no timeout.
+     * @param {String} [options.clusterSettings.requiredReplicaSetName]
+     *  A required replica set name for the cluster.
+     * @param {Number} [options.clusterSettings.serverSelectionTimeout]
+     * The timeout to apply when selecting a server.  If the timeout expires before a server is found to handle a request, a
+     * {@link com.mongodb.MongoTimeoutException} will be thrown.  The default value is 30 seconds.
+     *
+     * <p> A value of 0 means that it will timeout immediately if no server is available.  A negative value means to wait
+     * indefinitely.</p>
+     * @param {Number} [options.clusterSettings.maxWaitQueueSize=500]
+     * The number of threads that are allowed to be waiting for a connection.
+     * @param {String} [options.clusterSettings.requiredClusterType] 
+     * The required cluster type for the cluster.
+     * @param {Number} [options.connectionPoolSettings.maxSize=100] 
+     * <p>The maximum number of connections allowed. Those connections will be kept in the pool when idle. Once the pool is exhausted, any
+     * operation requiring a connection will block waiting for an available connection.</p>
+     * @param {Number} [options.connectionPoolSettings.minSize=0] 
+     * <p>The minimum number of connections. Those connections will be kept in the pool when idle, and the pool will ensure that it contains
+     * at least this minimum number.</p>
+     * @param {Number} [options.connectionPoolSettings.maxWaitQueueSize=500] 
+     * <p>This is the maximum number of operations that may be waiting for a connection to become available from the pool. All further
+     * operations will get an exception immediately.</p>
+     * @param {Number} [options.connectionPoolSettings.maxWaitTime] 
+     * <p>Maximum time that a thread may wait for a connection to become available.</p>
+     * <p>Default is 2 minutes. A value of 0 means that it will not wait.  A negative value means it will wait indefinitely.</p>
+     * @param {Number} [options.connectionPoolSettings.maxConnectionLifeTime] 
+     * Mmaximum time a pooled connection can live for.  A zero value indicates no limit to the life time.  A pooled connection that has
+     * exceeded its life time will be closed and replaced when necessary by a new connection.
+     * @param {Number} [options.connectionPoolSettings.maxConnectionIdleTime]
+     * Maximum idle time of a pooled connection.  A zero value indicates no limit to the idle time.  A pooled connection that
+     * has exceeded its idle time will be closed and replaced when necessary by a new connection.
+     * @param {Number} [options.connectionPoolSettings.maintenanceInitialDelay]
+     * Period of time to wait before running the first maintenance job on the connection pool.
+     * @param {Number} [options.connectionPoolSettings.maintenanceFrequency]
+     * Time period between runs of the maintenance job.
+     * @param {Number} [options.serverSettings.heartbeatFrequency=10]
+     * The frequency that the cluster monitor attempts to reach each server.  The default value is 10 seconds.
+     * @param {Number} [options.serverSettings.minHeartbeatFrequency=500]
+     * The minimum heartbeat frequency.  In the event that the driver has to frequently re-check a server's availability, it will wait
+     * at least this long since the previous check to avoid wasted effort.  The default value is 500 milliseconds.
+     * @param {Boolean} [options.sslSettings.enabled]
+     * Whether SSL is enabled.
+     * @param {Boolean} [options.sslSettings.invalidHostNameAllowed=false]
+     * True if invalid host names should be allowed.  Defaults to false.  Take care before setting this to true, as it makes
+     * the application susceptible to man-in-the-middle attacks.
+     * @param {Number} [options.socketSettings.connectTimeout=10000]
+     * Gets the timeout for socket connect.  Defaults to 10 seconds.
+     * @param {Number} [options.socketSettings.readTimeout=0]
+     * The timeout for socket reads.  Defaults to 0, which indicates no timeout
+     * @param {Boolean} [options.socketSettings.keepAlive=false]
+     * True if keep-alive is enabled. Defaults to false.
+     * @param {Boolean} [options.socketSettings.receiveBufferSize]
+     * The receive buffer size. Defaults to the operating system default.
+     * @param {Boolean} [options.socketSettings.sendBufferSize]
+     * The send buffer size.  Defaults to the operating system default.
      * @returns {MongoClient}
      * @throws {MongoError}
      */
     MongoClient.connect = function (uri, options) {
         return new MongoClient(uri, options)
     }
-    
+
     return MongoClient;
 });

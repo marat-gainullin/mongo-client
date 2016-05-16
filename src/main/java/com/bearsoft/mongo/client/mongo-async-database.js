@@ -1,4 +1,3 @@
-//
 // MongoDB API for Nashorn in AMD environment, supporting Java's Services API
 // especially for callbacks in async mode calls.
 //
@@ -6,7 +5,7 @@
 // The Apache License version 2.0:
 // http://www.opensource.org/licenses/apache2.0.php
 
-define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-collection', './mongo-bson'], function (MongoUtil, MongoError, MongoClient, MongoCollection, BSON) {
+define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-async-collection', './mongo-bson', './mongo-async'], function (MongoUtil, MongoError, MongoClient, MongoCollection, Bson, MongoAsync) {
     var MongoDatabaseClass = Java.type('com.mongodb.async.client.MongoDatabase');
     /**
      *
@@ -100,11 +99,13 @@ define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-collec
         //
 
         /**
+         * @param aOnSuccess Success callback. Called when the database has been dropped.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.drop = function () {
+        this.drop = function (aOnSuccess, aOnFailure) {
             try {
-                this.database.drop()
+                this.database.drop(MongoAsync.callbacks(aOnSuccess, aOnFailure))
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -123,19 +124,22 @@ define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-collec
         }
 
         /**
+         * @param aOnSuccess Success callback. Consumes the command's result.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.command = function (command) {
+        this.command = function (command, aOnSuccess, aOnFailure) {
             try {
-                var result
-                command = BSON.to(command)
-                var result;
+                command = Bson.to(command)
                 if (!MongoUtil.exists(this.commandReadPreference)) {
-                    result = this.database.runCommand(command, BSON.documentClass)
+                    this.database.runCommand(command, Bson.documentClass.class, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(Bson.from(aResult));
+                    }, aOnFailure))
                 } else {
-                    result = this.database.runCommand(command, this.commandReadPreference, BSON.documentClass)
+                    this.database.runCommand(command, this.commandReadPreference, Bson.documentClass.class, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(Bson.from(aResult));
+                    }, aOnFailure))
                 }
-                return BSON.from(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -152,7 +156,7 @@ define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-collec
         this.collection = function (name) {
             try {
                 // This will convert native JavaScript types
-                var collection = this.database.getCollection(name, BSON.documentClass.class)
+                var collection = this.database.getCollection(name, Bson.documentClass.class)
                 return new MongoCollection(collection, this);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
@@ -162,50 +166,30 @@ define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-collec
         /**
          * @param {Object} [options]
          * @param {Number} [options.batchSize]
-         * @returns {MongoCollection[]}
+         * @returns {MongoIterable}
          * @throws {MongoError}
          */
-        this.collections = function (options) {
+        this.collectionNames = function (options) {
             try {
-                var collections = []
-                var i = this.database.listCollectionNames().iterator()
-                try {
-                    if (MongoUtil.exists(options)) {
-                        MongoUtil.mongoIterable(i, options)
-                    }
-                    while (i.hasNext()) {
-                        collections.push(this.collection(i.next()))
-                    }
-                } finally {
-                    i.close()
-                }
-                return collections
+                var i = this.database.listCollectionNames()
+                if (MongoUtil.exists(options))
+                    MongoUtil.mongoIterable(i, options);
+                return new MongoAsync.AsyncIterable(i);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
         }
 
         /**
-         * @param {Object} [options]
-         * @param {Number} [options.batchSize]
-         * @returns {String[]}
+         * @returns {MongoIterable}
          * @throws {MongoError}
          */
-        this.collectionNames = function (options) {
+        this.collections = function (options) {
             try {
-                var collectionNames = []
-                var i = this.database.listCollectionNames().iterator()
-                try {
-                    if (MongoUtil.exists(options)) {
-                        MongoUtil.mongoIterable(i, options)
-                    }
-                    while (i.hasNext()) {
-                        collectionNames.push(i.next())
-                    }
-                } finally {
-                    i.close()
-                }
-                return collectionNames
+                var i = this.database.listCollections(Bson.documentClass.class)
+                if (MongoUtil.exists(options))
+                    MongoUtil.listCollectionsIterable(i, options);
+                return new MongoAsync.AsyncFilteredIterable(i);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -219,67 +203,20 @@ define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-collec
          * @param {Number} [options.sizeInBytes]
          * @param {Object} [options.storageEngineOptions]
          * @param {Boolean} [options.usePowerOf2Sizes]
+         * @param aOnSuccess Success callback. Called when the collection has been created.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.createCollection = function (name, options) {
+        this.createCollection = function (name, options, aOnSuccess, aOnFailure) {
             try {
                 if (!MongoUtil.exists(options)) {
-                    this.database.createCollection(name)
+                    this.database.createCollection(name, MongoAsync.callbacks(aOnSuccess, aOnFailure))
                 } else {
                     options = MongoUtil.createCollectionOptions(options)
-                    this.database.createCollection(name, options)
+                    this.database.createCollection(name, options, MongoAsync.callbacks(aOnSuccess, aOnFailure))
                 }
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
-            }
-        }
-
-        /**
-         * Creates properties of type {@link MongoCollection} for every collection the database.
-         * <p>
-         * The property keys are the collection names. If there is conflict with an existing property,
-         * then a "_" will be appended as a suffix. More "_" will be added for as long as there is conflict.
-         * <p>
-         * If there are "." in a collection name, then the collection will be put in a hierarchy of
-         * objects. If a parent object does not exist, then an empty object will be inserted.
-         * 
-         * @param {Object} [options]
-         * @param {Number} [options.batchSize]
-         * @returns {String[]}
-         * @throws {MongoError}
-         */
-        this.collectionsToProperties = function (options) {
-            var PlaceHolder = function () {} // Empty class
-
-            try {
-                var names = this.collectionNames(options)
-                names.sort() // we want them in order, so that sub-collections will be added to their parents
-                for (var n in names) {
-                    var name = names[n]
-                    var parts = String(name).split('.')
-                    var location = this
-                    for (var p in parts) {
-                        var part = parts[p]
-                        part = safeProperteryName(location, part)
-                        if (p == parts.length - 1) {
-                            location[part] = this.collection(name)
-                        } else {
-                            location[part] = location[part] || new PlaceHolder()
-                            location = location[part]
-                        }
-                    }
-                }
-            } catch (x if !(x instanceof MongoError)) {
-                throw new MongoError(x)
-            }
-
-            function safeProperteryName(o, name) {
-                while (true) {
-                    if (!MongoUtil.exists(o[name]) || (o[name] instanceof MongoCollection) || (o[name] instanceof PlaceHolder)) {
-                        return name
-                    }
-                    name += '_'
-                }
             }
         }
 
@@ -288,13 +225,15 @@ define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-collec
         //
 
         /**
+         * @param aOnSuccess Success callback. Consumes the command's result.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.stats = function (scale) {
+        this.stats = function (scale, aOnSuccess, aOnFailure) {
             if (!MongoUtil.exists(scale)) {
                 scale = 1024
             }
-            return this.command({dbStats: 1, scale: scale})
+            return this.command({dbStats: 1, scale: scale}, aOnSuccess, aOnFailure)
         }
 
         //

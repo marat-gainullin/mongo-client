@@ -2,7 +2,7 @@
  * 
  * @author mg
  */
-define('forms', function (Forms, aModuleName) {
+define(['forms', 'invoke'], function (Forms, Invoke, aModuleName) {
     function Launcher() {
         var self = this
                 , form = Forms.loadForm(aModuleName);
@@ -12,9 +12,9 @@ define('forms', function (Forms, aModuleName) {
         };
 
         form.btnRun.onActionPerformed = function (event) {
-            require(['logger', './bson/cases', './async/cases'], function (Logger, bsonTests, asyncTests) {
+            require(['logger', /*'./bson/cases', */'./async/cases'], function (Logger, /*bsonTests, */asyncTests) {
                 var tests = [];
-                Array.prototype.push.apply(tests, bsonTests);
+                //Array.prototype.push.apply(tests, bsonTests);
                 Array.prototype.push.apply(tests, asyncTests);
                 form.progress.minimum = 0;
                 form.progress.maximum = tests.length;
@@ -33,13 +33,19 @@ define('forms', function (Forms, aModuleName) {
                             form.txtLog.text += msg;
                             Logger.info(msg);
                             testidx++;
-                            performTest();
+                            Invoke.later(performTest);
+                        }, function(e){
+                            var msg = test.constructor.name + " - failed - " + e;
+                            if (form.txtLog.text)
+                                form.txtLog.text += '\n';
+                            form.txtLog.text += msg;
+                            Logger.severe(msg);
                         });
                     } else {
                         form.btnRun.enabled = true;
                     }
                 }
-                performTest();
+                Invoke.later(performTest);
             });
         };
     }

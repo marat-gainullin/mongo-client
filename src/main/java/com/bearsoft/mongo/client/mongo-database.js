@@ -6,7 +6,7 @@
 // The Apache License version 2.0:
 // http://www.opensource.org/licenses/apache2.0.php
 
-define(['./mongo-util', './mongo-error', './mongo-client', './mongo-collection', './mongo-bson'], function (MongoUtil, MongoError, MongoClient, MongoCollection, BSON) {
+define(['./mongo-util', './mongo-error', './mongo-client', './mongo-collection', './mongo-bson'], function (MongoUtil, MongoError, MongoClient, MongoCollection, Bson) {
     var MongoDatabaseClass = Java.type('com.mongodb.client.MongoDatabase');
     /**
      *
@@ -128,14 +128,14 @@ define(['./mongo-util', './mongo-error', './mongo-client', './mongo-collection',
         this.command = function (command) {
             try {
                 var result
-                command = BSON.to(command)
+                command = Bson.to(command)
                 var result;
                 if (!MongoUtil.exists(this.commandReadPreference)) {
-                    result = this.database.runCommand(command, BSON.documentClass)
+                    result = this.database.runCommand(command, Bson.documentClass)
                 } else {
-                    result = this.database.runCommand(command, this.commandReadPreference, BSON.documentClass)
+                    result = this.database.runCommand(command, this.commandReadPreference, Bson.documentClass)
                 }
-                return BSON.from(result)
+                return Bson.from(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -152,7 +152,7 @@ define(['./mongo-util', './mongo-error', './mongo-client', './mongo-collection',
         this.collection = function (name) {
             try {
                 // This will convert native JavaScript types
-                var collection = this.database.getCollection(name, BSON.documentClass.class)
+                var collection = this.database.getCollection(name, Bson.documentClass.class)
                 return new MongoCollection(collection, this);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)

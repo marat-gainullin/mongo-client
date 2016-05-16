@@ -8,7 +8,7 @@
 // The Apache License version 2.0:
 // http://www.opensource.org/licenses/apache2.0.php
 
-define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (MongoInternals, MongoError, BSON) {
+define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (MongoInternals, MongoError, Bson) {
     var ArrayListClass = Java.type('java.util.ArrayList');
     var ObjectIdClass = Java.type('org.bson.types.ObjectId');
     var MongoClientURIClass = Java.type('com.mongodb.MongoClientURI');
@@ -37,7 +37,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
     var ServerSettingsClass = Java.type('com.mongodb.connection.ServerSettings');
     var SslSettingsClass = Java.type('com.mongodb.connection.SslSettings');
     var SocketSettingsClass = Java.type('com.mongodb.connection.SocketSettings');
-
+    var TimeUnitClass = Java.type('java.util.concurrent.TimeUnit');
 
     var MongoUtil = function () {
         /** @exports Public as MongoUtil */
@@ -77,6 +77,15 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                 return (value instanceof String) || (typeof value === 'string')
             } catch (x) {
                 return false
+            }
+        }
+
+        Public.applyTimeOptions = function (target, source, options) {
+            for (var o in options) {
+                var option = options[o]
+                if (Public.exists(source[option])) {
+                    target[option](source[option], TimeUnitClass.MILLISECONDS)
+                }
             }
         }
 
@@ -199,7 +208,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             }
             var connection = Public.connectDatabase(uri)
             try {
-                connection.collection = connection.database.getCollection(uri.collection, BSON.documentClass)
+                connection.collection = connection.database.getCollection(uri.collection, Bson.documentClass)
                 return connection
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
@@ -221,8 +230,10 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                 MongoUtil.applyOptions(clusterSettingsBuilder, options.clusterSettings, [
                     'description',
                     'requiredReplicaSetName',
-                    'serverSelectionTimeout',
                     'maxWaitQueueSize'
+                ]);
+                MongoUtil.applyTimeOptions(clusterSettingsBuilder, options.clusterSettings, [
+                    'serverSelectionTimeout'
                 ]);
                 if (MongoUtil.exists(options.clusterSettings.requiredClusterType)) {
                     clusterSettingsBuilder = clusterSettingsBuilder.requiredClusterType(ClusterTypeClass.valueOf(options.clusterSettings.requiredClusterType));
@@ -235,7 +246,9 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                 MongoUtil.applyOptions(connectionPoolSettingsBuilder, options.connectionPoolSettings, [
                     'maxSize',
                     'minSize',
-                    'maxWaitQueueSize',
+                    'maxWaitQueueSize'
+                ]);
+                MongoUtil.applyTimeOptions(connectionPoolSettingsBuilder, options.connectionPoolSettings, [
                     'maxWaitTime',
                     'maxConnectionLifeTime',
                     'maxConnectionIdleTime',
@@ -247,7 +260,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
 
             var serverSettingsBuilder = ServerSettingsClass.builder();
             if (MongoUtil.exists(options) && MongoUtil.exists(options.serverSettings)) {
-                MongoUtil.applyOptions(serverSettingsBuilder, options.serverSettings, [
+                MongoUtil.applyTimeOptions(serverSettingsBuilder, options.serverSettings, [
                     'heartbeatFrequency',
                     'minHeartbeatFrequency'
                 ]);
@@ -268,11 +281,13 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             var socketSettingsBuilder = SocketSettingsClass.builder().applyConnectionString(connectionString);
             if (MongoUtil.exists(options) && MongoUtil.exists(options.socketSettings)) {
                 MongoUtil.applyOptions(socketSettingsBuilder, options.socketSettings, [
-                    'connectTimeout',
-                    'readTimeout',
                     'keepAlive',
                     'receiveBufferSize',
                     'sendBufferSize'
+                ]);
+                MongoUtil.applyTimeOptions(socketSettingsBuilder, options.socketSettings, [
+                    'connectTimeout',
+                    'readTimeout'
                 ]);
             }
             settingsBuilder = settingsBuilder.socketSettings(socketSettingsBuilder.build());
@@ -320,7 +335,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             }
             var connection = Public.connectAsyncDatabase(uri, options)
             try {
-                connection.collection = connection.database.getCollection(uri.collection, BSON.documentClass)
+                connection.collection = connection.database.getCollection(uri.collection, Bson.documentClass)
                 return connection;
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
@@ -353,7 +368,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             // TODO: is this really necessary?
             var list = new ArrayListClass(array.length)
             for (var a in array) {
-                list.add(BSON.to(array[a]))
+                list.add(Bson.to(array[a]))
             }
             return list
         }
@@ -407,7 +422,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                 var createCollectionOptions = new CreateCollectionOptionsClass()
                 Public.applyOptions(createCollectionOptions, options, ['autoIndex', 'capped', 'maxDocuments', 'sizeInBytes', 'usePowerOf2Sizes'])
                 if (Public.exists(options.storageEngineOptions)) {
-                    createCollectionOptions.storageEngineOptions(BSON.to(options.storageEngineOptions))
+                    createCollectionOptions.storageEngineOptions(Bson.to(options.storageEngineOptions))
                 }
                 options = createCollectionOptions
             }
@@ -419,10 +434,10 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                 var countOptions = new CountOptionsClass()
                 Public.applyOptions(countOptions, options, ['hintString', 'limit', 'skip'])
                 if (Public.exists(options.hint)) {
-                    countOptions.hint(BSON.to(options.hint))
+                    countOptions.hint(Bson.to(options.hint))
                 }
                 if (Public.exists(options.maxTime)) {
-                    countOptions.maxTime(options.maxTime, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    countOptions.maxTime(options.maxTime, TimeUnitClass.MILLISECONDS)
                 }
                 options = countOptions
             }
@@ -434,13 +449,13 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                 var indexOptions = new IndexOptionsClass()
                 Public.applyOptions(indexOptions, options, ['background', 'bits', 'bucketSize', 'defaultLanguage', 'languageOverride', 'max', 'min', 'name', 'sparse', 'sphereVersion', 'textVersion', 'unique', 'version'])
                 if (Public.exists(options.expireAfter)) {
-                    indexOptions.expireAfter(options.expireAfter, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    indexOptions.expireAfter(options.expireAfter, TimeUnitClass.MILLISECONDS)
                 }
                 if (Public.exists(options.storageEngine)) {
-                    indexOptions.storageEngine(BSON.to(options.expireAfter))
+                    indexOptions.storageEngine(Bson.to(options.expireAfter))
                 }
                 if (Public.exists(options.weights)) {
-                    indexOptions.weights(BSON.to(options.weights))
+                    indexOptions.weights(Bson.to(options.weights))
                 }
                 options = indexOptions
             }
@@ -451,13 +466,13 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             if (!(options instanceof FindOneAndDeleteOptionsClass)) {
                 var findOneAndDeleteOptions = new FindOneAndDeleteOptionsClass()
                 if (Public.exists(options.maxTime)) {
-                    findOneAndDeleteOptions.maxTime(options.maxTime, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    findOneAndDeleteOptions.maxTime(options.maxTime, TimeUnitClass.MILLISECONDS)
                 }
                 if (Public.exists(options.projection)) {
-                    findOneAndDeleteOptions.projection(BSON.to(options.projection))
+                    findOneAndDeleteOptions.projection(Bson.to(options.projection))
                 }
                 if (Public.exists(options.sort)) {
-                    findOneAndDeleteOptions.sort(BSON.to(options.sort))
+                    findOneAndDeleteOptions.sort(Bson.to(options.sort))
                 }
                 options = findOneAndDeleteOptions
             }
@@ -469,10 +484,10 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                 var findOneAndReplaceOptions = new FindOneAndReplaceOptionsClass()
                 Public.applyOptions(findOneAndReplaceOptions, options, ['upsert'])
                 if (Public.exists(options.maxTime)) {
-                    findOneAndReplaceOptions.maxTime(options.maxTime, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    findOneAndReplaceOptions.maxTime(options.maxTime, TimeUnitClass.MILLISECONDS)
                 }
                 if (Public.exists(options.projection)) {
-                    findOneAndReplaceOptions.projection(BSON.to(options.projection))
+                    findOneAndReplaceOptions.projection(Bson.to(options.projection))
                 }
                 if (Public.exists(options.returnDocument)) {
                     if (options.returnDocument instanceof ReturnDocumentClass) {
@@ -491,7 +506,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                     }
                 }
                 if (Public.exists(options.sort)) {
-                    findOneAndReplaceOptions.sort(BSON.to(options.sort))
+                    findOneAndReplaceOptions.sort(Bson.to(options.sort))
                 }
                 options = findOneAndReplaceOptions
             }
@@ -503,10 +518,10 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                 var findOneAndUpdateOptions = new FindOneAndUpdateOptionsClass()
                 Public.applyOptions(findOneAndUpdateOptions, options, ['upsert'])
                 if (Public.exists(options.maxTime)) {
-                    findOneAndUpdateOptions.maxTime(options.maxTime, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    findOneAndUpdateOptions.maxTime(options.maxTime, TimeUnitClass.MILLISECONDS)
                 }
                 if (Public.exists(options.projection)) {
-                    findOneAndUpdateOptions.projection(BSON.to(options.projection))
+                    findOneAndUpdateOptions.projection(Bson.to(options.projection))
                 }
                 if (Public.exists(options.returnDocument)) {
                     if (options.returnDocument instanceof ReturnDocumentClass) {
@@ -525,7 +540,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                     }
                 }
                 if (Public.exists(options.sort)) {
-                    findOneAndUpdateOptions.sort(BSON.to(options.sort))
+                    findOneAndUpdateOptions.sort(Bson.to(options.sort))
                 }
                 options = findOneAndUpdateOptions
             }
@@ -691,10 +706,10 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         Public.distinctIterable = function (i, options) {
             Public.applyOptions(i, options, ['batchSize'])
             if (Public.exists(options.filter)) {
-                i.filter(BSON.to(options.filter))
+                i.filter(Bson.to(options.filter))
             }
             if (Public.exists(options.maxTime)) {
-                i.maxTime(options.maxTime, java.util.concurrent.TimeUnit.MILLISECONDS)
+                i.maxTime(options.maxTime, TimeUnitClass.MILLISECONDS)
             }
         }
 
@@ -723,19 +738,19 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                 }
             }
             if (Public.exists(options.filter)) {
-                i.filter(BSON.to(options.filter))
+                i.filter(Bson.to(options.filter))
             }
             if (Public.exists(options.maxTime)) {
-                i.maxTime(options.maxTime, java.util.concurrent.TimeUnit.MILLISECONDS)
+                i.maxTime(options.maxTime, TimeUnitClass.MILLISECONDS)
             }
             if (Public.exists(options.modifiers)) {
-                i.modifiers(BSON.to(options.modifiers))
+                i.modifiers(Bson.to(options.modifiers))
             }
             if (Public.exists(options.projection)) {
-                i.projection(BSON.to(options.projection))
+                i.projection(Bson.to(options.projection))
             }
             if (Public.exists(options.sort)) {
-                i.sort(BSON.to(options.sort))
+                i.sort(Bson.to(options.sort))
             }
         }
 
@@ -743,17 +758,19 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             Public.applyOptions(i, options, ['batchSize'])
         }
 
-        Public.listIndexesIterable = function (i, options) {
+        Public.listCollectionsIterable = function (i, options) {
             Public.applyOptions(i, options, ['batchSize'])
             if (Public.exists(options.maxTime)) {
-                i.maxTime(options.maxTime, java.util.concurrent.TimeUnit.MILLISECONDS)
+                i.maxTime(options.maxTime, TimeUnitClass.MILLISECONDS)
             }
         }
+        Public.listIndexesIterable = Public.listCollectionsIterable;
+        Public.listDatabasesIterable = Public.listCollectionsIterable;
 
         Public.aggregateIterable = function (i, options) {
             Public.applyOptions(i, options, ['allowDiskUse', 'batchSize', 'useCursor'])
             if (Public.exists(options.maxTime)) {
-                i.maxTime(options.maxTime, java.util.concurrent.TimeUnit.MILLISECONDS)
+                i.maxTime(options.maxTime, TimeUnitClass.MILLISECONDS)
             }
         }
 

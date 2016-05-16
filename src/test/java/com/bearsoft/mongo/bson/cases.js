@@ -18,8 +18,7 @@ define([
             , './string-test'
             , './timestamp-test'
             , './undefined-test'
-], function () {
-    var MongoClient = arguments[0];
+], function (MongoClient) {
     var client = MongoClient.connect('mongodb://localhost/test');
     var collection = client.collection('test.test');
     var tests = [];
