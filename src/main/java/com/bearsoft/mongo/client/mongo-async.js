@@ -8,7 +8,7 @@ define(['./mongo-bson'], function (Bson) {
     }
 
     function MongoAsyncIterable(aNative) {
-//void first(SingleResultCallback<TResult> callback);
+        //void first(SingleResultCallback<TResult> callback);
         /**
          * Helper to return the first item in the iterator or null.
          *
@@ -105,7 +105,7 @@ define(['./mongo-bson'], function (Bson) {
     }
 
     module.callbacks = callbacks;
-    module.AsyncIterable = MongoAsyncIterable;
-    module.AsyncFilteredIterable = MongoAsyncFilteredIterable;
+    module.Iterable = MongoAsyncIterable;
+    module.FilteredIterable = MongoAsyncFilteredIterable;
     return module;
 });

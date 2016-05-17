@@ -1,5 +1,5 @@
 define(['../options'], function (Options) {
-    function CreateCollectionTest() {
+    function CollectionWriteConcernTest() {
         this.execute = function (aOnSuccess, aOnFailure) {
             Options.with(function (aClient, aOnComplete) {
                 function complete(e) {
@@ -10,22 +10,21 @@ define(['../options'], function (Options) {
                         aOnSuccess();
                 }
                 try {
-                    var database = aClient.database('test1');
+                    var database = aClient.database('test');
                     if (undefined == database)
                         throw 'client.database violation';
-                    database.createCollection('kill-me-please', {}, function (created) {
-                        if(undefined == created)
-                            complete('collection creation has failed');
+                    //database.collection('kill-me-please').drop(complete, complete); return;
+                    database.createCollection('kill-me-please', {}, function (aCollection) {
+                        if(undefined == aCollection.writeConcern())
+                            complete('write-concern violation');
                         else
-                            complete();
-                    }, function (e) {
-                        complete(e);
-                    });
+                            aCollection.drop(complete, complete);
+                    }, complete);
                 } catch (e) {
                     complete(e);
                 }
             });
         };
     }
-    return CreateCollectionTest;
+    return CollectionWriteConcernTest;
 });

@@ -155,7 +155,6 @@ define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-async-
          */
         this.collection = function (name) {
             try {
-                // This will convert native JavaScript types
                 var collection = this.database.getCollection(name, Bson.documentClass.class)
                 return new MongoCollection(collection, this);
             } catch (x if !(x instanceof MongoError)) {
@@ -174,7 +173,7 @@ define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-async-
                 var i = this.database.listCollectionNames()
                 if (MongoUtil.exists(options))
                     MongoUtil.mongoIterable(i, options);
-                return new MongoAsync.AsyncIterable(i);
+                return new MongoAsync.Iterable(i);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -189,7 +188,7 @@ define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-async-
                 var i = this.database.listCollections(Bson.documentClass.class)
                 if (MongoUtil.exists(options))
                     MongoUtil.listCollectionsIterable(i, options);
-                return new MongoAsync.AsyncFilteredIterable(i);
+                return new MongoAsync.FilteredIterable(i);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -213,7 +212,10 @@ define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-async-
                     this.database.createCollection(name, MongoAsync.callbacks(aOnSuccess, aOnFailure))
                 } else {
                     options = MongoUtil.createCollectionOptions(options)
-                    this.database.createCollection(name, options, MongoAsync.callbacks(aOnSuccess, aOnFailure))
+                    var _self = this;
+                    this.database.createCollection(name, options, MongoAsync.callbacks(function () {
+                        aOnSuccess(_self.collection(name));
+                    }, aOnFailure))
                 }
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)

@@ -160,14 +160,14 @@ define(['./mongo-util', './mongo-error', './mongo-async', './mongo-bson'], funct
                 var i = this.client.listDatabaseNames();
                 if (MongoUtil.exists(options))
                     MongoUtil.mongoIterable(i, options);
-                return new MongoAsync.AsyncIterable(i);
+                return new MongoAsync.Iterable(i);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x);
             }
         };
 
         /**
-         * @returns {MongoAsync.AsyncIterable}
+         * @returns {MongoAsync.Iterable}
          * @throws {MongoError}
          */
         this.databases = function (options) {
@@ -175,7 +175,7 @@ define(['./mongo-util', './mongo-error', './mongo-async', './mongo-bson'], funct
                 var i = this.client.listDatabases(Bson.documentClass.class);
                 if (MongoUtil.exists(options))
                     MongoUtil.listDatabasesIterable(i, options);
-                return new MongoAsync.AsyncIterable(i);
+                return new MongoAsync.Iterable(i);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x);
             }

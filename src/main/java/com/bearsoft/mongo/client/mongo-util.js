@@ -49,6 +49,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
     var ReplaceOneModelClass = Java.type('com.mongodb.client.model.ReplaceOneModel');
     var UpdateManyModelClass = Java.type('com.mongodb.client.model.UpdateManyModel');
     var UpdateOneModelClass = Java.type('com.mongodb.client.model.UpdateOneModel');
+    var IndexModelClass = Java.type('com.mongodb.client.model.IndexModel');
 
     var MongoUtil = function () {
         /** @exports Public as MongoUtil */
@@ -393,7 +394,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                     spec[fieldOrSpec] = 1
                     fieldOrSpec = spec
                 }
-                list.add(fieldOrSpec)
+                list.add(new IndexModelClass(Bson.to(fieldOrSpec)))
             }
             return list
         }
@@ -690,7 +691,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                 wasAcknowledged: result.wasAcknowledged()
             }
             if (deleteResult.wasAcknowledged) {
-                deleteResult.deletedCount = result.deletedCount
+                deleteResult.deletedCount = +result.deletedCount
             }
             return deleteResult
         }

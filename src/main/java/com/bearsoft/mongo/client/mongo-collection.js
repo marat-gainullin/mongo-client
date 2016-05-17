@@ -6,7 +6,7 @@
 // The Apache License version 2.0:
 // http://www.opensource.org/licenses/apache2.0.php
 
-define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], function (MongoUtil, MongoError, BSON, MongoCursor) {
+define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], function (MongoUtil, MongoError, Bson, MongoCursor) {
     var MongoCollectionClass = Java.type('com.mongodb.client.MongoCollection');
     var MongoNamespaceClass = Java.type('com.mongodb.MongoNamespace');
     var ObjectClass = Java.type('java.lang.Object');
@@ -232,7 +232,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
                 } else {
                     spec = fieldOrSpec
                 }
-                spec = BSON.to(spec)
+                spec = Bson.to(spec)
                 if (!MongoUtil.exists(options)) {
                     return this.collection.createIndex(spec)
                 } else {
@@ -266,7 +266,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
                 if (MongoUtil.isString(fieldOrSpec)) {
                     this.collection.dropIndex(fieldOrSpec)
                 } else {
-                    fieldOrSpec = BSON.to(fieldOrSpec)
+                    fieldOrSpec = Bson.to(fieldOrSpec)
                     this.collection.dropIndex(fieldOrSpec)
                 }
             } catch (x if !(x instanceof MongoError)) {
@@ -363,7 +363,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
                 if (!MongoUtil.exists(filter)) {
                     i = this.collection.find()
                 } else {
-                    filter = BSON.to(filter)
+                    filter = Bson.to(filter)
                     i = this.collection.find(filter)
                 }
                 if (MongoUtil.exists(options)) {
@@ -418,7 +418,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
                 if (!MongoUtil.exists(filter)) {
                     return this.collection.count()
                 } else {
-                    filter = BSON.to(filter)
+                    filter = Bson.to(filter)
                     if (!MongoUtil.exists(options)) {
                         return this.collection.count(filter)
                     } else {
@@ -461,7 +461,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
         this.aggregate = function (pipeline, options) {
             try {
                 pipeline = MongoUtil.documentList(pipeline)
-                pipeline = BSON.to(pipeline)
+                pipeline = Bson.to(pipeline)
                 var i = this.collection.aggregate(pipeline)
                 if (MongoUtil.exists(options)) {
                     MongoUtil.aggregateIterable(i, options)
@@ -663,7 +663,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
          */
         this.insertOne = function (doc) {
             try {
-                this.collection.insertOne(BSON.to(doc))
+                this.collection.insertOne(Bson.to(doc))
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -680,7 +680,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
          */
         this.deleteMany = function (filter) {
             try {
-                filter = BSON.to(filter)
+                filter = Bson.to(filter)
                 var result = this.collection.deleteMany(filter)
                 return MongoUtil.deleteResult(result)
             } catch (x if !(x instanceof MongoError)) {
@@ -695,7 +695,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
          */
         this.deleteOne = function (filter) {
             try {
-                filter = BSON.to(filter)
+                filter = Bson.to(filter)
                 var result = this.collection.deleteOne(filter)
                 return MongoUtil.deleteResult(result)
             } catch (x if !(x instanceof MongoError)) {
@@ -712,7 +712,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
          */
         this.findOneAndDelete = function (filter, options) {
             try {
-                filter = BSON.to(filter)
+                filter = Bson.to(filter)
                 var result;
                 if (!MongoUtil.exists(options)) {
                     result = this.collection.findOneAndDelete(filter)
@@ -720,7 +720,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
                     options = MongoUtil.findOneAndDeleteOptions(options)
                     result = this.collection.findOneAndDelete(filter, options)
                 }
-                return BSON.from(result)
+                return Bson.from(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -740,7 +740,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
          */
         this.replaceOne = function (filter, replacement, options) {
             try {
-                filter = BSON.to(filter)
+                filter = Bson.to(filter)
                 var result;
                 if (!MongoUtil.exists(options)) {
                     result = this.collection.replaceOne(filter, replacement)
@@ -765,7 +765,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
          */
         this.findOneAndReplace = function (filter, replacement, options) {
             try {
-                filter = BSON.to(filter)
+                filter = Bson.to(filter)
                 var result;
                 if (!MongoUtil.exists(options)) {
                     result = this.collection.findOneAndReplace(filter, replacement)
@@ -773,7 +773,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
                     options = MongoUtil.findOneAndReplaceOptions(options)
                     result = this.collection.findOneAndReplace(filter, replacement, options)
                 }
-                return BSON.from(result)
+                return Bson.from(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -793,8 +793,8 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
          */
         this.updateMany = function (filter, update, options) {
             try {
-                filter = BSON.to(filter)
-                update = BSON.to(update)
+                filter = Bson.to(filter)
+                update = Bson.to(update)
                 var result;
                 if (!MongoUtil.exists(options)) {
                     result = this.collection.updateMany(filter, update)
@@ -818,8 +818,8 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
          */
         this.updateOne = function (filter, update, options) {
             try {
-                filter = BSON.to(filter)
-                update = BSON.to(update)
+                filter = Bson.to(filter)
+                update = Bson.to(update)
                 var result;
                 if (!MongoUtil.exists(options)) {
                     result = this.collection.updateOne(filter, update)
@@ -844,8 +844,8 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
          */
         this.findOneAndUpdate = function (filter, update, options) {
             try {
-                filter = BSON.to(filter)
-                update = BSON.to(update)
+                filter = Bson.to(filter)
+                update = Bson.to(update)
                 var result;
                 if (!MongoUtil.exists(options)) {
                     result = this.collection.findOneAndUpdate(filter, update)
@@ -853,7 +853,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
                     options = MongoUtil.findOneAndUpdateOptions(options)
                     result = this.collection.findOneAndUpdate(filter, update, options)
                 }
-                return BSON.from(result)
+                return Bson.from(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }

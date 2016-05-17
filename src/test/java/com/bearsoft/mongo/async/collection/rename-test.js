@@ -1,5 +1,5 @@
 define(['../options'], function (Options) {
-    function CreateCollectionTest() {
+    function RenameTest() {
         this.execute = function (aOnSuccess, aOnFailure) {
             Options.with(function (aClient, aOnComplete) {
                 function complete(e) {
@@ -10,22 +10,20 @@ define(['../options'], function (Options) {
                         aOnSuccess();
                 }
                 try {
-                    var database = aClient.database('test1');
+                    var database = aClient.database('test');
                     if (undefined == database)
                         throw 'client.database violation';
-                    database.createCollection('kill-me-please', {}, function (created) {
-                        if(undefined == created)
-                            complete('collection creation has failed');
-                        else
-                            complete();
-                    }, function (e) {
-                        complete(e);
-                    });
+                    //database.collection('kill-me-please').drop(complete, complete); return;
+                    database.createCollection('kill-me-please', {}, function (aCollection) {
+                        aCollection.rename('kill-me-please-please', {}, function () {
+                            aCollection.drop(complete, complete);
+                        }, complete);
+                    }, complete);
                 } catch (e) {
                     complete(e);
                 }
             });
         };
     }
-    return CreateCollectionTest;
+    return RenameTest;
 });

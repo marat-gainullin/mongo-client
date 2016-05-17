@@ -6,7 +6,7 @@
 // The Apache License version 2.0:
 // http://www.opensource.org/licenses/apache2.0.php
 
-define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client', './mongo-cursor'], function (MongoUtil, MongoError, Bson, MongoClient, MongoCursor) {
+define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client', './mongo-cursor', './mongo-async'], function (MongoUtil, MongoError, Bson, MongoClient, MongoCursor, MongoAsync) {
     var MongoCollectionClass = Java.type('com.mongodb.async.client.MongoCollection');
     var MongoNamespaceClass = Java.type('com.mongodb.MongoNamespace');
     var ObjectClass = Java.type('java.lang.Object');
@@ -114,11 +114,13 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
         //
 
         /**
+         * @param aOnSuccess Success callback. Called when the collection has been dropped.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.drop = function () {
+        this.drop = function (aOnSuccess, aOnFailure) {
             try {
-                this.collection.drop()
+                this.collection.drop(MongoAsync.callbacks(aOnSuccess, aOnFailure))
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -127,20 +129,31 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
         /**
          * @param {Object} [options]
          * @param {Boolean} [options.dropTarget]
+         * @param aOnSuccess Success callback. Called when the collection has been renamed.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.rename = function (newName, options) {
+        this.rename = function (newName, options, aOnSuccess, aOnFailure) {
             try {
+                var selfCollection = this.collection;
+                function acceptNames() {
+                    this.name = selfCollection.namespace.collectionName
+                    this.databaseName = selfCollection.namespace.databaseName
+                    this.fullName = selfCollection.namespace.fullName
+                }
                 var namespace = new MongoNamespaceClass(this.databaseName, newName)
                 if (!MongoUtil.exists(options)) {
-                    this.renameCollection(namespace)
+                    this.collection.renameCollection(namespace, MongoAsync.callbacks(function () {
+                        acceptNames();
+                        aOnSuccess();
+                    }, aOnFailure))
                 } else {
                     options = MongoUtil.renameCollectionOptions(options)
-                    this.renameCollection(namespace, options)
+                    this.collection.renameCollection(namespace, options, MongoAsync.callbacks(function () {
+                        acceptNames();
+                        aOnSuccess();
+                    }, aOnFailure))
                 }
-                this.name = this.collection.namespace.collectionName
-                this.databaseName = this.collection.namespace.databaseName
-                this.fullName = this.collection.namespace.fullName
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -149,9 +162,11 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
         /**
          * @param {Boolean} [data=false]
          * @param {Boolean} [index=false]
+         * @param aOnSuccess Success callback. Called when the collection has been touched.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.touch = function (data, index) {
+        this.touch = function (data, index, aOnSuccess, aOnFailure) {
             var command = {touch: this.name}
             if (MongoUtil.exists(data)) {
                 command.data = data
@@ -159,16 +174,18 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
             if (MongoUtil.exists(index)) {
                 command.index = index
             }
-            return this.database.command(command)
+            return this.database.command(command, aOnSuccess, aOnFailure)
         }
 
         /**
          * @param {Boolean} [force=false]
          * @param {Number} [paddingFactor]
          * @param {Number} [paddingBytes]
+         * @param aOnSuccess Success callback. Called when the collection has been compacted.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.compact = function (force, paddingFactor, paddingBytes) {
+        this.compact = function (force, paddingFactor, paddingBytes, aOnSuccess, aOnFailure) {
             var command = {compact: this.name}
             if (MongoUtil.exists(force)) {
                 command.force = force
@@ -179,24 +196,28 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
             if (MongoUtil.exists(paddingBytes)) {
                 command.paddingBytes = paddingBytes
             }
-            return this.database.command(command)
+            return this.database.command(command, aOnSuccess, aOnFailure)
         }
 
         /**
          * @param {Number} size
          * @throws {MongoError}
+         * @param aOnSuccess Success callback. Called when the collection has been converted.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          */
-        this.convertToCapped = function (size) {
-            return this.database.command({convertToCapped: this.name, size: size})
+        this.convertToCapped = function (size, aOnSuccess, aOnFailure) {
+            return this.database.command({convertToCapped: this.name, size: size}, aOnSuccess, aOnFailure)
         }
 
         /**
+         * @param aOnSuccess Success callback. Called when the flag has been setted.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.setFlag = function (flag, value) {
+        this.setFlag = function (flag, value, aOnSuccess, aOnFailure) {
             var command = {collMod: this.name}
             command[flag] = value
-            return this.database.command(command)
+            return this.database.command(command, aOnSuccess, aOnFailure)
         }
 
         //
@@ -222,9 +243,11 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {Boolean} [options.unique]
          * @param {Number} [options.version]
          * @param {Object} [options.weights]
+         * @param aOnSuccess Success callback. Called when the index has been created.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.createIndex = function (fieldOrSpec, options) {
+        this.createIndex = function (fieldOrSpec, options, aOnSuccess, aOnFailure) {
             try {
                 var spec
                 if (MongoUtil.isString(fieldOrSpec)) {
@@ -235,10 +258,10 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
                 }
                 spec = Bson.to(spec)
                 if (!MongoUtil.exists(options)) {
-                    return this.collection.createIndex(spec)
+                    return this.collection.createIndex(spec, MongoAsync.callbacks(aOnSuccess, aOnFailure))
                 } else {
                     options = MongoUtil.createIndexOptions(options)
-                    return this.collection.createIndex(spec, options)
+                    return this.collection.createIndex(spec, options, MongoAsync.callbacks(aOnSuccess, aOnFailure))
                 }
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
@@ -247,12 +270,14 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
 
         /**
          * @param {Array} fieldsOrSpecs Strings or Objects
+         * @param aOnSuccess Success callback. Called when the indexes have been created.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.createIndexes = function (fieldsOrSpecs) {
+        this.createIndexes = function (fieldsOrSpecs, aOnSuccess, aOnFailure) {
             try {
                 var specs = MongoUtil.indexSpecsList(fieldsOrSpecs)
-                return this.collection.createIndexes(specs)
+                return this.collection.createIndexes(specs, MongoAsync.callbacks(aOnSuccess, aOnFailure))
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -260,15 +285,17 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
 
         /**
          * @param {String|Object} fieldOrSpec
+         * @param aOnSuccess Success callback. Called when the index has been dropped.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.dropIndex = function (fieldOrSpec) {
+        this.dropIndex = function (fieldOrSpec, aOnSuccess, aOnFailure) {
             try {
                 if (MongoUtil.isString(fieldOrSpec)) {
-                    this.collection.dropIndex(fieldOrSpec)
+                    this.collection.dropIndex(fieldOrSpec, MongoAsync.callbacks(aOnSuccess, aOnFailure))
                 } else {
                     fieldOrSpec = Bson.to(fieldOrSpec)
-                    this.collection.dropIndex(fieldOrSpec)
+                    this.collection.dropIndex(fieldOrSpec, MongoAsync.callbacks(aOnSuccess, aOnFailure))
                 }
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
@@ -276,11 +303,13 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
         }
 
         /**
+         * @param aOnSuccess Success callback. Called when the indexes have been dropped.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.dropIndexes = function () {
+        this.dropIndexes = function (aOnSuccess, aOnFailure) {
             try {
-                this.collection.dropIndexes()
+                this.collection.dropIndexes(MongoAsync.callbacks(aOnSuccess, aOnFailure))
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -294,47 +323,23 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          */
         this.indexes = function (options) {
             try {
-                var indexes = []
-                var i = this.collection.listIndexes().iterator()
-                try {
-                    if (MongoUtil.exists(options)) {
-                        MongoUtil.listIndexesIterable(i, options)
-                    }
-                    while (i.hasNext()) {
-                        indexes.push(i.next())
-                    }
-                } finally {
-                    i.close()
+                var i = this.collection.listIndexes(Bson.documentClass.class)
+                if (MongoUtil.exists(options)) {
+                    MongoUtil.listIndexesIterable(i, options)
                 }
-                return indexes
+                return new MongoAsync.Iterable(i);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
         }
 
         /**
+         * @param aOnSuccess Success callback. Called when the reindex procedure has been completed.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.reIndex = function () {
-            return this.database.command({reIndex: this.name})
-        }
-
-        /**
-         * Currently can only change expireAfterSeconds option.
-         *
-         * @throws {MongoError}
-         */
-        this.modifyIndex = function (fieldOrSpec, options) {
-            if (MongoUtil.isString(fieldOrSpec)) {
-                var spec = {}
-                spec[fieldOrSpec] = 1
-                fieldOrSpec = spec
-            }
-            var index = {keyPattern: fieldOrSpec}
-            for (var k in options) {
-                index[k] = options[k]
-            }
-            return this.setFlag('index', index)
+        this.reIndex = function (aOnSuccess, aOnFailure) {
+            return this.database.command({reIndex: this.name}, aOnSuccess, aOnFailure)
         }
 
         //
@@ -412,19 +417,25 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {Number} [options.limit]
          * @param {Number} [options.maxTime]
          * @param {Number} [options.skip]
+         * @param aOnSuccess Success callback. Consumes operation result.
+         * @param aOnFailure Failure callback. Called if insertion failed.
          * @throws {MongoError}
          */
-        this.count = function (filter, options) {
+        this.count = function (filter, options, aOnSuccess, aOnFailure) {
             try {
                 if (!MongoUtil.exists(filter)) {
-                    return this.collection.count()
+                    return this.collection.count(MongoAsync.callbacks(aOnSuccess, aOnFailure))
                 } else {
                     filter = Bson.to(filter)
                     if (!MongoUtil.exists(options)) {
-                        return this.collection.count(filter)
+                        return this.collection.count(filter, MongoAsync.callbacks(function (aCount) {
+                            aOnSuccess(+aCount);
+                        }, aOnFailure))
                     } else {
                         options = MongoUtil.countOptions(options)
-                        return this.collection.count(filter, options)
+                        return this.collection.count(filter, options, MongoAsync.callbacks(function (aCount) {
+                            aOnSuccess(+aCount);
+                        }, aOnFailure))
                     }
                 }
             } catch (x if !(x instanceof MongoError)) {
@@ -642,16 +653,18 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {Object[]} [docs]
          * @param {Object} [options]
          * @param {Boolean} [options.ordered]
+         * @param aOnSuccess Success callback. Called when insertion is done.
+         * @param aOnFailure Failure callback. Called if insertion failed.
          * @throws {MongoError}
          */
-        this.insertMany = function (docs, options) {
+        this.insertMany = function (docs, options, aOnSuccess, aOnFailure) {
             try {
                 docs = MongoUtil.documentList(docs)
                 if (!MongoUtil.exists(options)) {
-                    this.collection.insertMany(docs)
+                    this.collection.insertMany(docs, MongoAsync.callbacks(aOnSuccess, aOnFailure))
                 } else {
                     options = MongoUtil.insertManyOptions(options)
-                    this.collection.insertMany(docs, options)
+                    this.collection.insertMany(docs, options, MongoAsync.callbacks(aOnSuccess, aOnFailure))
                 }
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
@@ -660,11 +673,13 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
 
         /**
          * @param {Object} [doc]
+         * @param aOnSuccess Success callback. Called when insertion is done.
+         * @param aOnFailure Failure callback. Called if insertion failed.
          * @throws {MongoError}
          */
-        this.insertOne = function (doc) {
+        this.insertOne = function (doc, aOnSuccess, aOnFailure) {
             try {
-                this.collection.insertOne(Bson.to(doc))
+                this.collection.insertOne(Bson.to(doc), MongoAsync.callbacks(aOnSuccess, aOnFailure))
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -676,14 +691,16 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
 
         /**
          * @param {Object} filter
-         * @returns Object: .wasAcknowledged (Boolean), .deleteCount (Number)
+         * @param aOnSuccess Success callback. Called when deletion is done with argument: {Object} .wasAcknowledged (Boolean), .deleteCount (Number).
+         * @param aOnFailure Failure callback. Called if deletion failed.
          * @throws {MongoError}
          */
-        this.deleteMany = function (filter) {
+        this.deleteMany = function (filter, aOnSuccess, aOnFailure) {
             try {
                 filter = Bson.to(filter)
-                var result = this.collection.deleteMany(filter)
-                return MongoUtil.deleteResult(result)
+                this.collection.deleteMany(filter, MongoAsync.callbacks(function (aResult) {
+                    aOnSuccess(MongoUtil.deleteResult(aResult));
+                }, aOnFailure))
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -691,14 +708,17 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
 
         /**
          * @param {Object} filter
-         * @returns Object: .wasAcknowledged (Boolean), .deleteCount (Number)
+         * @param aOnSuccess Success callback. Called when deletion is done with argument: {Object} .wasAcknowledged (Boolean), .deleteCount (Number).
+         * @param aOnFailure Failure callback. Called if deletion failed.
+         * @returns 
          * @throws {MongoError}
          */
-        this.deleteOne = function (filter) {
+        this.deleteOne = function (filter, aOnSuccess, aOnFailure) {
             try {
                 filter = Bson.to(filter)
-                var result = this.collection.deleteOne(filter)
-                return MongoUtil.deleteResult(result)
+                this.collection.deleteOne(filter, MongoAsync.callbacks(function (aResult) {
+                    aOnSuccess(MongoUtil.deleteResult(aResult));
+                }, aOnFailure))
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
