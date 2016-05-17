@@ -38,6 +38,17 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
     var SslSettingsClass = Java.type('com.mongodb.connection.SslSettings');
     var SocketSettingsClass = Java.type('com.mongodb.connection.SocketSettings');
     var TimeUnitClass = Java.type('java.util.concurrent.TimeUnit');
+    var MongoClientClass = Java.type('com.mongodb.MongoClient');
+    var TagClass = Java.type('com.mongodb.Tag');
+    var TagSetClass = Java.type('com.mongodb.TagSet');
+    var ReadPreferenceClass = Java.type('com.mongodb.ReadPreference');
+    var WriteConcernClass = Java.type('com.mongodb.WriteConcern');
+    var DeleteManyModelClass = Java.type('com.mongodb.client.model.DeleteManyModel');
+    var DeleteOneModelClass = Java.type('com.mongodb.client.model.DeleteOneModel');
+    var InsertOneModelClass = Java.type('com.mongodb.client.model.InsertOneModel');
+    var ReplaceOneModelClass = Java.type('com.mongodb.client.model.ReplaceOneModel');
+    var UpdateManyModelClass = Java.type('com.mongodb.client.model.UpdateManyModel');
+    var UpdateOneModelClass = Java.type('com.mongodb.client.model.UpdateOneModel');
 
     var MongoUtil = function () {
         /** @exports Public as MongoUtil */
@@ -165,7 +176,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             }
             uri = Public.clientUri(uri, options)
             try {
-                var client = new com.mongodb.MongoClient(uri)
+                var client = new MongoClientClass(uri)
                 return {
                     uri: uri,
                     client: client
@@ -335,7 +346,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             }
             var connection = Public.connectAsyncDatabase(uri, options)
             try {
-                connection.collection = connection.database.getCollection(uri.collection, Bson.documentClass)
+                connection.collection = connection.database.getCollection(uri.collection, Bson.documentClass.class)
                 return connection;
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
@@ -599,12 +610,12 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                 var tagList = new ArrayListClass()
                 for (var name in options.tags) {
                     var value = options.tags[value]
-                    tagList.add(new com.mongodb.Tag(name, value))
+                    tagList.add(new TagClass(name, value))
                 }
-                var tagSet = new com.mongodb.TagSet(tagList)
-                readPreference = com.mongodb.ReadPreference[options.mode](tagSet)
+                var tagSet = new TagSetClass(tagList)
+                readPreference = ReadPreferenceClass[options.mode](tagSet)
             } else {
-                readPreference = com.mongodb.ReadPreference[options.mode]()
+                readPreference = ReadPreferenceClass[options.mode]()
             }
 
             return readPreference
@@ -615,7 +626,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             var wtimeout = Public.exists(options.wtimeout) ? options.wtimeout : 0
             var fsync = Public.exists(options.fsync) ? options.fsync : false
             var j = Public.exists(options.j) ? options.j : false
-            return new com.mongodb.WriteConcern(w, wtimeout, fsync, j)
+            return new WriteConcernClass(w, wtimeout, fsync, j)
         }
 
         // Models
@@ -627,42 +638,42 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             if (!(model instanceof WriteModelClass)) {
                 switch (model.type) {
                     case 'deleteMany':
-                        model = new com.mongodb.client.model.DeleteManyModel(model.filter)
+                        model = new DeleteManyModelClass(model.filter)
                         break
                     case 'deleteOne':
-                        model = new com.mongodb.client.model.DeleteOneModel(model.filter)
+                        model = new DeleteOneModelClass(model.filter)
                         break
                     case 'insertOne':
-                        model = new com.mongodb.client.model.InsertOneModel(model.document)
+                        model = new InsertOneModelClass(model.document)
                         break
                     case 'replaceOne':
                         var filter = model.filter
                         var replacement = model.replacement
                         if (!Public.exists(model.options)) {
-                            model = new com.mongodb.client.model.ReplaceOneModel(filter, replacement)
+                            model = new ReplaceOneModelClass(filter, replacement)
                         } else {
                             var options = Public.updateOptions(model.options)
-                            model = new com.mongodb.client.model.ReplaceOneModel(filter, replacement, options)
+                            model = new ReplaceOneModelClass(filter, replacement, options)
                         }
                         break
                     case 'updateMany':
                         var filter = model.filter
                         var update = model.update
                         if (!Public.exists(model.options)) {
-                            model = new com.mongodb.client.model.UpdateManyModel(filter, update)
+                            model = new UpdateManyModelClass(filter, update)
                         } else {
                             var options = Public.updateOptions(model.options)
-                            model = new com.mongodb.client.model.UpdateManyModel(filter, update, options)
+                            model = new UpdateManyModelClass(filter, update, options)
                         }
                         break
                     case 'updateOne':
                         var filter = model.filter
                         var update = model.update
                         if (!Public.exists(model.options)) {
-                            model = new com.mongodb.client.model.UpdateOneModel(filter, update)
+                            model = new UpdateOneModelClass(filter, update)
                         } else {
                             var options = Public.updateOptions(model.options)
-                            model = new com.mongodb.client.model.UpdateOneModel(filter, update, options)
+                            model = new UpdateOneModelClass(filter, update, options)
                         }
                         break
                     default:

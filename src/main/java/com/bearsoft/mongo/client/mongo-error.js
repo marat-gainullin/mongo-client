@@ -12,6 +12,8 @@ define(['./mongo-script-util'], function (MongoInternals) {
     var MongoServerExceptionClass = Java.type('com.mongodb.MongoServerException');
     var MongoExceptionClass = Java.type('com.mongodb.MongoException');
     var ThrowableClass = Java.type('java.lang.Throwable');
+    var StringWriterClass = Java.type('java.io.StringWriter');
+    var PrintWriterClass = Java.type('java.io.PrintWriter');
     /**
      *
      * @class
@@ -104,8 +106,8 @@ define(['./mongo-script-util'], function (MongoInternals) {
     }
 
     MongoError.represent = function (x, full) {
-        var s = new java.io.StringWriter()
-        var out = new java.io.PrintWriter(s)
+        var s = new StringWriterClass()
+        var out = new PrintWriterClass(s)
         if (x instanceof MongoError) {
             out.println('MongoDB error:')
             out.println(String(JSON.stringify(x.clean())))

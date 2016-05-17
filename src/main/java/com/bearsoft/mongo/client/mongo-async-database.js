@@ -21,7 +21,7 @@ define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-async-
             client = options // second argument
         } else {
             // Connect
-            var connection = MongoUtil.connectDatabase(uri, options)
+            var connection = MongoUtil.connectAsyncDatabase(uri, options)
             client = new MongoClient(connection.client)
             client.uri = connection.uri
             database = connection.database

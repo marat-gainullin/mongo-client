@@ -8,6 +8,8 @@
 
 define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], function (MongoUtil, MongoError, BSON, MongoCursor) {
     var MongoCollectionClass = Java.type('com.mongodb.client.MongoCollection');
+    var MongoNamespaceClass = Java.type('com.mongodb.MongoNamespace');
+    var ObjectClass = Java.type('java.lang.Object');
     /**
      *
      * @class
@@ -128,7 +130,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
          */
         this.rename = function (newName, options) {
             try {
-                var namespace = com.mongodb.MongoNamespace(this.databaseName, newName)
+                var namespace = new MongoNamespaceClass(this.databaseName, newName)
                 if (!MongoUtil.exists(options)) {
                     this.renameCollection(namespace)
                 } else {
@@ -437,7 +439,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
          */
         this.distinct = function (key, options) {
             try {
-                var i = this.collection.distinct(key, java.lang.Object)
+                var i = this.collection.distinct(key, ObjectClass)
                 if (MongoUtil.exists(options)) {
                     MongoUtil.distinctIterable(i, options)
                 }
