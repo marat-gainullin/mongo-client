@@ -13,7 +13,7 @@ define(['../options'], function (Options) {
                     var database = aClient.database('test');
                     if (undefined == database)
                         throw 'client.database violation';
-                    //database.collection('kill-me-please').drop(complete, complete); return;
+                    database.collection('kill-me-please').drop(complete, complete); return;
                     database.createCollection('kill-me-please', {}, function (aCollection) {
                         aCollection.rename('kill-me-please-please', {}, function () {
                             aCollection.drop(complete, complete);

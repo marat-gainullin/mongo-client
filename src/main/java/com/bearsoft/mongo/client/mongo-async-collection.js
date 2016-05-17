@@ -135,11 +135,11 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          */
         this.rename = function (newName, options, aOnSuccess, aOnFailure) {
             try {
-                var selfCollection = this.collection;
+                var _self = this;
                 function acceptNames() {
-                    this.name = selfCollection.namespace.collectionName
-                    this.databaseName = selfCollection.namespace.databaseName
-                    this.fullName = selfCollection.namespace.fullName
+                    this.name = _self.collection.namespace.collectionName
+                    this.databaseName = _self.collection.namespace.databaseName
+                    this.fullName = _self.collection.namespace.fullName
                 }
                 var namespace = new MongoNamespaceClass(this.databaseName, newName)
                 if (!MongoUtil.exists(options)) {

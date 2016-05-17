@@ -1,4 +1,4 @@
-define(['./options-test'
+define([/*'./options-test'
 , './client/database-test'
 , './client/databases-test'
 , './client/database-names-test'
@@ -27,7 +27,7 @@ define(['./options-test'
 , './collection/delete-many-test'
 , './collection/read-preference-test'
 , './collection/write-concern-test'
-, './collection/rename-test'
+,*/ './collection/rename-test'
     ], function () {
     var tests = [];
     for (var i = 0; i < arguments.length - 1; i++)
