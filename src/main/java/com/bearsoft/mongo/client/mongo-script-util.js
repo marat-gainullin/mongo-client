@@ -1,12 +1,12 @@
 //
-// MongoDB API for Nashorn in AMD environment, supporting Java's Services API
+// MongoDB API for Nashorn in AMD environment
 // especially for callbacks in async mode calls.
 //
 // Based on Three Crickets LLC code and is subject of
 // The Apache License version 2.0:
 // http://www.opensource.org/licenses/apache2.0.php
 
-define(function () {
+define(['./mongo-bson'], function (Bson) {
     var Public = {};
     //
     // General-purpose JavaScript utilities
@@ -47,7 +47,7 @@ define(function () {
                 while (i.hasNext()) {
                     var upsert = i.next()
                     bulkWriteResult.upserts.push({
-                        id: upsert.id,
+                        id: Bson.from(upsert.id),
                         index: upsert.index
                     })
                 }

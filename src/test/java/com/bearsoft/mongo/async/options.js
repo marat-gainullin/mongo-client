@@ -38,7 +38,7 @@ define(['../../../../../../main/java/com/bearsoft/mongo/client/mongo-async-clien
             var client = MongoClient.connect('mongodb://localhost/test');
             client.close();
             // Plain cinstrcutor
-            client = new MongoClient('mongodb://localhost/test');//, options);
+            client = new MongoClient('mongodb://localhost/test', options);
             aHandler(client, function () {
                 client.close();
             });

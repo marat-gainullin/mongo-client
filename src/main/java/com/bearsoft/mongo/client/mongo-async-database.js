@@ -1,4 +1,4 @@
-// MongoDB API for Nashorn in AMD environment, supporting Java's Services API
+// MongoDB API for Nashorn in AMD environment, 
 // especially for callbacks in async mode calls.
 //
 // Based on Three Crickets LLC code and is subject of
@@ -188,7 +188,7 @@ define(['./mongo-util', './mongo-error', './mongo-async-client', './mongo-async-
                 var i = this.database.listCollections(Bson.documentClass.class)
                 if (MongoUtil.exists(options))
                     MongoUtil.listCollectionsIterable(i, options);
-                return new MongoAsync.FilteredIterable(i);
+                return new MongoAsync.ListCollectionsIterable(i);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }

@@ -1,5 +1,5 @@
-define(['../options'], function (Options) {
-    function RenameTest() {
+define(['logger', '../options'], function (Logger, Options) {
+    function DistinctTest() {
         this.execute = function (aOnSuccess, aOnFailure) {
             Options.with(function (aClient, aOnComplete) {
                 function complete(e) {
@@ -15,8 +15,19 @@ define(['../options'], function (Options) {
                         throw 'client.database violation';
                     //database.collection('kill-me-please').drop(complete, complete); return;
                     database.createCollection('kill-me-please', {}, function (aCollection) {
-                        aCollection.rename('kill-me-please-please', {}, function (aRenamed) {
-                            aRenamed.drop(complete, complete);
+                        aCollection.insertOne({p1: 'blah', p2: 65, p3: true, p4: null}, function () {
+                            var found = aCollection.distinct('p1');
+                            var foundCount = 0;
+                            found.forEach(function (anElement) {
+                                foundCount++;
+                                Logger.info('found - ' + anElement);
+                            }, function () {
+                                if (foundCount !== 1)
+                                    complete('distinct violation');
+                                else{
+                                    aCollection.drop(complete, complete);
+                                }
+                            }, complete);
                         }, complete);
                     }, complete);
                 } catch (e) {
@@ -25,5 +36,5 @@ define(['../options'], function (Options) {
             });
         };
     }
-    return RenameTest;
+    return DistinctTest;
 });

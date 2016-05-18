@@ -1,5 +1,5 @@
 //
-// MongoDB API for Nashorn in AMD environment, supporting Java's Services API
+// MongoDB API for Nashorn in AMD environment,
 // especially for callbacks in async mode calls.
 //
 // Based on Three Crickets LLC code and is subject of
@@ -461,8 +461,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
         this.aggregate = function (pipeline, options) {
             try {
                 pipeline = MongoUtil.documentList(pipeline)
-                pipeline = Bson.to(pipeline)
-                var i = this.collection.aggregate(pipeline)
+                var i = this.collection.aggregate(pipeline, Bson.documentClass.class)
                 if (MongoUtil.exists(options)) {
                     MongoUtil.aggregateIterable(i, options)
                 }
@@ -611,7 +610,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
 
         /**
          * @param {Object} [options]
-         * @param {Object} [options.filter]
+         * @param {Object} [options.search]
          * @param {Number} [options.maxDistance]
          * @param {Number} [options.limit]
          * @throws {MongoError}
@@ -619,10 +618,10 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
         this.geoHaystackSearch = function (x, y, options) {
             var command = {
                 geoSearch: this.name,
-                near: {type: 'Point', coordinates: [x, y]}
+                near: [x, y]
             }
-            if (MongoUtil.exists(options.filter)) {
-                command.search = options.filter // note: different name
+            if (MongoUtil.exists(options.search)) {
+                command.search = options.search
             }
             if (MongoUtil.exists(options.maxDistance)) {
                 command.maxDistance = options.maxDistance
@@ -745,7 +744,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
                 if (!MongoUtil.exists(options)) {
                     result = this.collection.replaceOne(filter, replacement)
                 } else {
-                    options = MongoUtil.replacementOptions(options)
+                    options = MongoUtil.updateOptions(options)
                     result = this.collection.replaceOne(filter, replacement, options)
                 }
                 return MongoUtil.updateResult(result)
@@ -899,20 +898,20 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-cursor'], func
         //
 
         /**
+         * @param {Array} operations Array of Objects with the following structure: {type: 'type', filter: {}, update: {}, replacement: {}, document: {}, options: {}}
          * type can be 'deleteMany', 'deleteOne', 'insertOne', 'replaceOne', 'updateMany', 'updateOne'
-         *
          * @param {Object} [options]
          * @param {Boolean} [options.ordered]
          * @throws {MongoError}
          */
         this.bulkWrite = function (operations, options) {
             try {
-                operations = MongoUtil.writeModels(operations)
+                operations = MongoUtil.writeModelList(operations)
                 if (!MongoUtil.exists(options)) {
-                    this.collection.bulkeWrite(operations)
+                    return MongoUtil.bulkWriteResult(this.collection.bulkWrite(operations))
                 } else {
                     options = MongoUtil.bulkWriteOptions(options)
-                    this.collection.bulkeWrite(operations, options)
+                    return MongoUtil.bulkWriteResult(this.collection.bulkWrite(operations, options))
                 }
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)

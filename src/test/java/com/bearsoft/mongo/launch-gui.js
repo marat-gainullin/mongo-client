@@ -12,9 +12,9 @@ define(['forms', 'invoke'], function (Forms, Invoke, aModuleName) {
         };
 
         form.btnRun.onActionPerformed = function (event) {
-            require(['logger', /*'./bson/cases', */'./async/cases'], function (Logger, /*bsonTests, */asyncTests) {
+            require(['logger', './bson/cases', './async/cases'], function (Logger, bsonTests, asyncTests) {
                 var tests = [];
-                //Array.prototype.push.apply(tests, bsonTests);
+                Array.prototype.push.apply(tests, bsonTests);
                 Array.prototype.push.apply(tests, asyncTests);
                 form.progress.minimum = 0;
                 form.progress.maximum = tests.length;

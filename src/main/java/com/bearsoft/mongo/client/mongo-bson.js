@@ -171,7 +171,7 @@ define(function () {
         else if (aValue instanceof BsonBooleanClass)
             return aValue.getValue();
         else if (aValue instanceof BsonDateTimeClass) {
-            return new Date(aValue.getValue());
+            return new Date(+aValue.getValue());
         } else if (aValue instanceof BsonTimestampClass) {
             return {$timestamp: {t: aValue.getTime(), i: aValue.getInc()}};
         } else if (aValue instanceof BsonRegularExpressionClass) {

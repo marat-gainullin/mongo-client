@@ -1,5 +1,5 @@
 define(['../options'], function (Options) {
-    function RenameTest() {
+    function ExplainTest() {
         this.execute = function (aOnSuccess, aOnFailure) {
             Options.with(function (aClient, aOnComplete) {
                 function complete(e) {
@@ -15,8 +15,11 @@ define(['../options'], function (Options) {
                         throw 'client.database violation';
                     //database.collection('kill-me-please').drop(complete, complete); return;
                     database.createCollection('kill-me-please', {}, function (aCollection) {
-                        aCollection.rename('kill-me-please-please', {}, function (aRenamed) {
-                            aRenamed.drop(complete, complete);
+                        aCollection.explain.count({}, function (aExplanation) {
+                            if (undefined == aExplanation)
+                                complete('explain-test violation');
+                            else
+                                aCollection.drop(complete, complete);
                         }, complete);
                     }, complete);
                 } catch (e) {
@@ -25,5 +28,5 @@ define(['../options'], function (Options) {
             });
         };
     }
-    return RenameTest;
+    return ExplainTest;
 });

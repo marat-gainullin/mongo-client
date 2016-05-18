@@ -1,7 +1,7 @@
 /* global Java */
 
 //
-// MongoDB API for Nashorn in AMD environment, supporting Java's Services API
+// MongoDB API for Nashorn in AMD environment,
 // especially for callbacks in async mode calls.
 //
 // Based on Three Crickets LLC code and is subject of
@@ -237,7 +237,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             var settingsBuilder = MongoClientSettingsClass.builder();
             var connectionString = uri instanceof ConnectionStringClass ? uri : new ConnectionStringClass(uri);
 
-            var clusterSettingsBuilder = ClusterSettingsClass.builder().applyConnectionString(connectionString);
+            var clusterSettingsBuilder = ClusterSettingsClass.builder();
             if (MongoUtil.exists(options) && MongoUtil.exists(options.clusterSettings)) {
                 MongoUtil.applyOptions(clusterSettingsBuilder, options.clusterSettings, [
                     'description',
@@ -251,6 +251,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                     clusterSettingsBuilder = clusterSettingsBuilder.requiredClusterType(ClusterTypeClass.valueOf(options.clusterSettings.requiredClusterType));
                 }
             }
+            clusterSettingsBuilder.applyConnectionString(connectionString);
             settingsBuilder = settingsBuilder.clusterSettings(clusterSettingsBuilder.build());
 
             var connectionPoolSettingsBuilder = ConnectionPoolSettingsClass.builder().applyConnectionString(connectionString);
@@ -589,7 +590,7 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
         Public.bulkWriteOptions = function (options) {
             if (!(options instanceof BulkWriteOptionsClass)) {
                 var bulkWriteOptions = new BulkWriteOptionsClass()
-                Public.applyOptions(renameCollectionOptions, options, ['ordered'])
+                Public.applyOptions(bulkWriteOptions, options, ['ordered'])
                 options = bulkWriteOptions
             }
             return options
@@ -639,17 +640,17 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
             if (!(model instanceof WriteModelClass)) {
                 switch (model.type) {
                     case 'deleteMany':
-                        model = new DeleteManyModelClass(model.filter)
+                        model = new DeleteManyModelClass(Bson.to(model.filter))
                         break
                     case 'deleteOne':
-                        model = new DeleteOneModelClass(model.filter)
+                        model = new DeleteOneModelClass(Bson.to(model.filter))
                         break
                     case 'insertOne':
-                        model = new InsertOneModelClass(model.document)
+                        model = new InsertOneModelClass(Bson.to(model.document))
                         break
                     case 'replaceOne':
-                        var filter = model.filter
-                        var replacement = model.replacement
+                        var filter = Bson.to(model.filter)
+                        var replacement = Bson.to(model.replacement)
                         if (!Public.exists(model.options)) {
                             model = new ReplaceOneModelClass(filter, replacement)
                         } else {
@@ -658,8 +659,8 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                         }
                         break
                     case 'updateMany':
-                        var filter = model.filter
-                        var update = model.update
+                        var filter = Bson.to(model.filter)
+                        var update = Bson.to(model.update)
                         if (!Public.exists(model.options)) {
                             model = new UpdateManyModelClass(filter, update)
                         } else {
@@ -668,8 +669,8 @@ define(['./mongo-script-util', './mongo-error', './mongo-bson'], function (Mongo
                         }
                         break
                     case 'updateOne':
-                        var filter = model.filter
-                        var update = model.update
+                        var filter = Bson.to(model.filter)
+                        var update = Bson.to(model.update)
                         if (!Public.exists(model.options)) {
                             model = new UpdateOneModelClass(filter, update)
                         } else {

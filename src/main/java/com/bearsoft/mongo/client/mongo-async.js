@@ -106,6 +106,9 @@ define(['./mongo-bson'], function (Bson) {
 
     module.callbacks = callbacks;
     module.Iterable = MongoAsyncIterable;
-    module.FilteredIterable = MongoAsyncFilteredIterable;
+    module.FindIterable = MongoAsyncFilteredIterable;
+    module.ListCollectionsIterable = MongoAsyncFilteredIterable;
+    module.DistinctIterable = MongoAsyncFilteredIterable;
+    module.AggregateIterable = MongoAsyncIterable;
     return module;
 });

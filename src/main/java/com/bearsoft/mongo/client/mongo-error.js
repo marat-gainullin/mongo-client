@@ -1,5 +1,5 @@
 //
-// MongoDB API for Nashorn in AMD environment, supporting Java's Services API
+// MongoDB API for Nashorn in AMD environment,
 // especially for callbacks in async mode calls.
 //
 // Based on Three Crickets LLC code and is subject of

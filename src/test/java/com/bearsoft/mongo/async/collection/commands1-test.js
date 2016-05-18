@@ -26,14 +26,15 @@ define(['../options'], function (Options) {
                                     aCollection.convertToCapped(1, function (aCappedResult) {
                                         if (undefined == aCappedResult)
                                             complete('commands1 violation 2');
-                                        else {
+                                        else if (!aCollection.isCapped())
+                                            complete('commands1 violation 3');
+                                        else
                                             aCollection.touch(true, true, function (aTouchResult) {
                                                 if (undefined == aTouchResult)
-                                                    complete('commands1 violation 3');
+                                                    complete('commands1 violation 4');
                                                 else
                                                     aCollection.drop(complete, complete);
                                             }, complete);
-                                        }
                                     }, complete);
                                 }
                             }, complete);

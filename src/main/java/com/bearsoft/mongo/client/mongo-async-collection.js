@@ -1,5 +1,5 @@
 //
-// MongoDB API for Nashorn in AMD environment, supporting Java's Services API
+// MongoDB API for Nashorn in AMD environment,
 // especially for callbacks in async mode calls.
 //
 // Based on Three Crickets LLC code and is subject of
@@ -9,7 +9,7 @@
 define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client', './mongo-cursor', './mongo-async'], function (MongoUtil, MongoError, Bson, MongoClient, MongoCursor, MongoAsync) {
     var MongoCollectionClass = Java.type('com.mongodb.async.client.MongoCollection');
     var MongoNamespaceClass = Java.type('com.mongodb.MongoNamespace');
-    var ObjectClass = Java.type('java.lang.Object');
+    var StringClass = Java.type('java.lang.String');
     /**
      *
      * @class
@@ -18,6 +18,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
      */
     function MongoCollection(uri /* or collection */, options /* or database */, database) {
         var collection, database, client
+        var capped = false;
         if (uri instanceof MongoCollectionClass) {
             // Just wrap
             collection = uri // first argument
@@ -136,22 +137,15 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
         this.rename = function (newName, options, aOnSuccess, aOnFailure) {
             try {
                 var _self = this;
-                function acceptNames() {
-                    this.name = _self.collection.namespace.collectionName
-                    this.databaseName = _self.collection.namespace.databaseName
-                    this.fullName = _self.collection.namespace.fullName
-                }
                 var namespace = new MongoNamespaceClass(this.databaseName, newName)
                 if (!MongoUtil.exists(options)) {
                     this.collection.renameCollection(namespace, MongoAsync.callbacks(function () {
-                        acceptNames();
-                        aOnSuccess();
+                        aOnSuccess(_self.database.collection(newName));
                     }, aOnFailure))
                 } else {
                     options = MongoUtil.renameCollectionOptions(options)
                     this.collection.renameCollection(namespace, options, MongoAsync.callbacks(function () {
-                        acceptNames();
-                        aOnSuccess();
+                        aOnSuccess(_self.database.collection(newName));
                     }, aOnFailure))
                 }
             } catch (x if !(x instanceof MongoError)) {
@@ -174,7 +168,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
             if (MongoUtil.exists(index)) {
                 command.index = index
             }
-            return this.database.command(command, aOnSuccess, aOnFailure)
+            this.database.command(command, aOnSuccess, aOnFailure)
         }
 
         /**
@@ -196,7 +190,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
             if (MongoUtil.exists(paddingBytes)) {
                 command.paddingBytes = paddingBytes
             }
-            return this.database.command(command, aOnSuccess, aOnFailure)
+            this.database.command(command, aOnSuccess, aOnFailure)
         }
 
         /**
@@ -206,7 +200,10 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param aOnFailure Failure callback. Consumes a failure reason.
          */
         this.convertToCapped = function (size, aOnSuccess, aOnFailure) {
-            return this.database.command({convertToCapped: this.name, size: size}, aOnSuccess, aOnFailure)
+            this.database.command({convertToCapped: this.name, size: size}, function (aResult) {
+                capped = true;
+                aOnSuccess(aResult);
+            }, aOnFailure)
         }
 
         /**
@@ -217,7 +214,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
         this.setFlag = function (flag, value, aOnSuccess, aOnFailure) {
             var command = {collMod: this.name}
             command[flag] = value
-            return this.database.command(command, aOnSuccess, aOnFailure)
+            this.database.command(command, aOnSuccess, aOnFailure)
         }
 
         //
@@ -339,7 +336,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @throws {MongoError}
          */
         this.reIndex = function (aOnSuccess, aOnFailure) {
-            return this.database.command({reIndex: this.name}, aOnSuccess, aOnFailure)
+            this.database.command({reIndex: this.name}, aOnSuccess, aOnFailure)
         }
 
         //
@@ -375,7 +372,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
                 if (MongoUtil.exists(options)) {
                     MongoUtil.findIterable(i, options)
                 }
-                return new MongoCursor(i, this, filter)
+                return new MongoAsync.FindIterable(i)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -398,11 +395,13 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {Object} [options.projection]
          * @param {Number} [options.skip]
          * @param {Object} [options.sort]
+         * @param aOnSuccess Success callback. Called when an object is found.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.findOne = function (filter, options) {
+        this.findOne = function (filter, options, aOnSuccess, aOnFailure) {
             var cursor = this.find(filter, options)
-            return cursor.first()
+            cursor.first(aOnSuccess, aOnFailure);
         }
 
         //
@@ -451,11 +450,11 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          */
         this.distinct = function (key, options) {
             try {
-                var i = this.collection.distinct(key, ObjectClass)
+                var i = this.collection.distinct(key, StringClass.class)
                 if (MongoUtil.exists(options)) {
                     MongoUtil.distinctIterable(i, options)
                 }
-                // TODO
+                return new MongoAsync.DistinctIterable(i);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -473,12 +472,11 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
         this.aggregate = function (pipeline, options) {
             try {
                 pipeline = MongoUtil.documentList(pipeline)
-                pipeline = Bson.to(pipeline)
-                var i = this.collection.aggregate(pipeline)
+                var i = this.collection.aggregate(pipeline, Bson.documentClass.class)
                 if (MongoUtil.exists(options)) {
                     MongoUtil.aggregateIterable(i, options)
                 }
-                return new MongoCursor(i, this)
+                return new MongoAsync.AggregateIterable(i);
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -491,9 +489,11 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {Function} [args.keyf]
          * @param {Object} [args.filter]
          * @param {Function} [args.finalize]
+         * @param aOnSuccess Success callback. Called when group operation has been completed.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.group = function (args) {
+        this.group = function (args, aOnSuccess, aOnFailure) {
             if (!MongoUtil.exists(args.initial)) {
                 args.initial = {}
             }
@@ -517,7 +517,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
             if (MongoUtil.exists(args.finalize)) {
                 command.group.finalize = String(args.finalize)
             }
-            return this.database.command(command)
+            this.database.command(command, aOnSuccess, aOnFailure)
         }
 
         /**
@@ -531,9 +531,11 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {Function} [args.finalize]
          * @param {Boolean} [args.jsMode=false]
          * @param {Boolean} [args.verbose=true]
+         * @param aOnSuccess Success callback. Called when map/reduce has been completed.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.mapReduce = function (args) {
+        this.mapReduce = function (args, aOnSuccess, aOnFailure) {
             if (!MongoUtil.exists(args.out)) {
                 args.out = {inline: 1}
             }
@@ -564,7 +566,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
             if (MongoUtil.exists(args.verbose)) {
                 command.verbose = args.verbose
             }
-            return this.database.command(command)
+            this.database.command(command, aOnSuccess, aOnFailure)
         }
 
         //
@@ -584,9 +586,11 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {Number} [options.minDistance]
          * @param {Number} [options.num]
          * @param {Boolean} [options.uniqueDocs]
+         * @param aOnSuccess Success callback. Called when objects have been found.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.geoNear = function (x, y, options) {
+        this.geoNear = function (x, y, options, aOnSuccess, aOnFailure) {
             var command = {
                 geoNear: this.name,
                 near: {type: 'Point', coordinates: [x, y]}
@@ -618,23 +622,27 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
             if (MongoUtil.exists(options.uniqueDocs)) {
                 command.uniqueDocs = options.uniqueDocs
             }
-            return this.database.command(command)
+            this.database.command(command, aOnSuccess, aOnFailure)
         }
 
         /**
+         * @param {Number} x
+         * @param {Number} y
          * @param {Object} [options]
-         * @param {Object} [options.filter]
+         * @param {Object} [options.search]
          * @param {Number} [options.maxDistance]
          * @param {Number} [options.limit]
+         * @param aOnSuccess Success callback. Called when objects have been found.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.geoHaystackSearch = function (x, y, options) {
+        this.geoHaystackSearch = function (x, y, options, aOnSuccess, aOnFailure) {
             var command = {
                 geoSearch: this.name,
-                near: {type: 'Point', coordinates: [x, y]}
+                near: [x, y]
             }
-            if (MongoUtil.exists(options.filter)) {
-                command.search = options.filter // note: different name
+            if (MongoUtil.exists(options.search)) {
+                command.search = options.search
             }
             if (MongoUtil.exists(options.maxDistance)) {
                 command.maxDistance = options.maxDistance
@@ -642,7 +650,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
             if (MongoUtil.exists(options.limit)) {
                 command.limit = options.limit
             }
-            return this.database.command(command)
+            this.database.command(command, aOnSuccess, aOnFailure)
         }
 
         //
@@ -729,19 +737,23 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {Number} [options.maxTime]
          * @param {Object} [options.projection]
          * @param {Object} [options.sort]
+         * @param aOnSuccess Success callback. Called when the operation is completed.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.findOneAndDelete = function (filter, options) {
+        this.findOneAndDelete = function (filter, options, aOnSuccess, aOnFailure) {
             try {
                 filter = Bson.to(filter)
-                var result;
                 if (!MongoUtil.exists(options)) {
-                    result = this.collection.findOneAndDelete(filter)
+                    this.collection.findOneAndDelete(filter, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(Bson.from(aResult));
+                    }, aOnFailure))
                 } else {
                     options = MongoUtil.findOneAndDeleteOptions(options)
-                    result = this.collection.findOneAndDelete(filter, options)
+                    this.collection.findOneAndDelete(filter, options, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(Bson.from(aResult));
+                    }, aOnFailure))
                 }
-                return Bson.from(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -756,20 +768,25 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {Object} [replacement]
          * @param {Object} [options]
          * @param {Boolean} [options.upsert]
-         * @returns Object: .wasAcknowledged (Boolean), .modifiedCountAvailable (Boolean), .modifiedCount (Number), .matchedCount (Number), .upsertedId (usually ObjectId)
+         * @param aOnSuccess Success callback. Called when updating is done.
+         * Consumes Object: .wasAcknowledged (Boolean), .modifiedCountAvailable (Boolean), .modifiedCount (Number), .matchedCount (Number), .upsertedId (usually ObjectId)
+         * @param aOnFailure Failure callback. Called if insertion failed.
          * @throws {MongoError}
          */
-        this.replaceOne = function (filter, replacement, options) {
+        this.replaceOne = function (filter, replacement, options, aOnSuccess, aOnFailure) {
             try {
                 filter = Bson.to(filter)
-                var result;
+                replacement = Bson.to(replacement)
                 if (!MongoUtil.exists(options)) {
-                    result = this.collection.replaceOne(filter, replacement)
+                    this.collection.replaceOne(filter, replacement, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(MongoUtil.updateResult(aResult));
+                    }, aOnFailure))
                 } else {
-                    options = MongoUtil.replacementOptions(options)
-                    result = this.collection.replaceOne(filter, replacement, options)
+                    options = MongoUtil.updateOptions(options)
+                    this.collection.replaceOne(filter, replacement, options, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(MongoUtil.updateResult(aResult));
+                    }, aOnFailure))
                 }
-                return MongoUtil.updateResult(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -782,19 +799,24 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {String|com.mongodb.client.model.ReturnDocument} [options.returnDocument] 'after' or 'before'
          * @param {Object} [options.sort]
          * @param {Boolean} [options.upsert]
+         * @param aOnSuccess Success callback. Called when the operation is completed.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.findOneAndReplace = function (filter, replacement, options) {
+        this.findOneAndReplace = function (filter, replacement, options, aOnSuccess, aOnFailure) {
             try {
                 filter = Bson.to(filter)
-                var result;
+                replacement = Bson.to(replacement)
                 if (!MongoUtil.exists(options)) {
-                    result = this.collection.findOneAndReplace(filter, replacement)
+                    this.collection.findOneAndReplace(filter, replacement, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(Bson.from(aResult));
+                    }, aOnFailure))
                 } else {
                     options = MongoUtil.findOneAndReplaceOptions(options)
-                    result = this.collection.findOneAndReplace(filter, replacement, options)
+                    this.collection.findOneAndReplace(filter, replacement, options, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(Bson.from(aResult));
+                    }, aOnFailure))
                 }
-                return Bson.from(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -809,21 +831,25 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {Object} [update]
          * @param {Object} [options]
          * @param {Boolean} [options.upsert]
-         * @returns Object: .wasAcknowledged (Boolean), .modifiedCountAvailable (Boolean), .modifiedCount (Number), .matchedCount (Number), .upsertedId (usually ObjectId)
+         * @param aOnSuccess Success callback. Called when updating is done.
+         * Consumes Object: .wasAcknowledged (Boolean), .modifiedCountAvailable (Boolean), .modifiedCount (Number), .matchedCount (Number), .upsertedId (usually ObjectId)
+         * @param aOnFailure Failure callback. Called if insertion failed.
          * @throws {MongoError}
          */
-        this.updateMany = function (filter, update, options) {
+        this.updateMany = function (filter, update, options, aOnSuccess, aOnFailure) {
             try {
                 filter = Bson.to(filter)
                 update = Bson.to(update)
-                var result;
                 if (!MongoUtil.exists(options)) {
-                    result = this.collection.updateMany(filter, update)
+                    this.collection.updateMany(filter, update, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(MongoUtil.updateResult(aResult));
+                    }, aOnFailure))
                 } else {
                     options = MongoUtil.updateOptions(options)
-                    result = this.collection.updateMany(filter, update, options)
+                    this.collection.updateMany(filter, update, options, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(MongoUtil.updateResult(aResult));
+                    }, aOnFailure))
                 }
-                return MongoUtil.updateResult(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -834,21 +860,25 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {Object} [update]
          * @param {Object} [options]
          * @param {Boolean} [options.upsert]
-         * @returns Object: .wasAcknowledged (Boolean), .modifiedCountAvailable (Boolean), .modifiedCount (Number), .matchedCount (Number), .upsertedId (usually ObjectId)
+         * @param aOnSuccess Success callback. Called when updating is done.
+         * Consumes Object: .wasAcknowledged (Boolean), .modifiedCountAvailable (Boolean), .modifiedCount (Number), .matchedCount (Number), .upsertedId (usually ObjectId)
+         * @param aOnFailure Failure callback. Called if insertion failed.
          * @throws {MongoError}
          */
-        this.updateOne = function (filter, update, options) {
+        this.updateOne = function (filter, update, options, aOnSuccess, aOnFailure) {
             try {
                 filter = Bson.to(filter)
                 update = Bson.to(update)
-                var result;
                 if (!MongoUtil.exists(options)) {
-                    result = this.collection.updateOne(filter, update)
+                    this.collection.updateOne(filter, update, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(MongoUtil.updateResult(aResult));
+                    }, aOnFailure))
                 } else {
                     options = MongoUtil.updateOptions(options)
-                    result = this.collection.updateOne(filter, update, options)
+                    this.collection.updateOne(filter, update, options, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(MongoUtil.updateResult(aResult));
+                    }, aOnFailure))
                 }
-                return MongoUtil.updateResult(result)
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -861,20 +891,55 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * @param {String|com.mongodb.client.model.ReturnDocument} [options.returnDocument] 'after' or 'before'
          * @param {Object} [options.sort]
          * @param {Boolean} [options.upsert]
+         * @param aOnSuccess Success callback. Called when the operation is completed.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.findOneAndUpdate = function (filter, update, options) {
+        this.findOneAndUpdate = function (filter, update, options, aOnSuccess, aOnFailure) {
             try {
                 filter = Bson.to(filter)
                 update = Bson.to(update)
-                var result;
                 if (!MongoUtil.exists(options)) {
-                    result = this.collection.findOneAndUpdate(filter, update)
+                    this.collection.findOneAndUpdate(filter, update, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(Bson.from(aResult));
+                    }, aOnFailure))
                 } else {
                     options = MongoUtil.findOneAndUpdateOptions(options)
-                    result = this.collection.findOneAndUpdate(filter, update, options)
+                    this.collection.findOneAndUpdate(filter, update, options, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(Bson.from(aResult));
+                    }, aOnFailure))
                 }
-                return Bson.from(result)
+            } catch (x if !(x instanceof MongoError)) {
+                throw new MongoError(x)
+            }
+        }
+
+        //
+        // Bulk write
+        //
+
+        /**
+         * @param {Array} operations Array of Objects with the following structure: {type: 'type', filter: {}, update: {}, replacement: {}, document: {}, options: {}}
+         * type can be 'deleteMany', 'deleteOne', 'insertOne', 'replaceOne', 'updateMany', 'updateOne'
+         * @param {Object} [options]
+         * @param {Boolean} [options.ordered]
+         * @param aOnSuccess Success callback. Called when the write is completed.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
+         * @throws {MongoError}
+         */
+        this.bulkWrite = function (operations, options, aOnSuccess, aOnFailure) {
+            try {
+                operations = MongoUtil.writeModelList(operations)
+                if (!MongoUtil.exists(options)) {
+                    this.collection.bulkWrite(operations, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(MongoUtil.bulkWriteResult(aResult));
+                    }, aOnFailure))
+                } else {
+                    options = MongoUtil.bulkWriteOptions(options)
+                    this.collection.bulkWrite(operations, options, MongoAsync.callbacks(function (aResult) {
+                        aOnSuccess(MongoUtil.bulkWriteResult(aResult));
+                    }, aOnFailure))
+                }
             } catch (x if !(x instanceof MongoError)) {
                 throw new MongoError(x)
             }
@@ -890,13 +955,14 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
          * 
          * @param {Object} [doc]
          * @param {Object} [options] Only used when updateOne is called
+         * @param aOnSuccess Success callback. Called when the object has been saved.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.save = function (doc, options) {
+        this.save = function (doc, options, aOnSuccess, aOnFailure) {
             if (!MongoUtil.exists(doc._id)) {
                 // Insert
-                this.insertOne(doc)
-                return null
+                this.insertOne(doc, aOnSuccess, aOnFailure)
             } else {
                 // Update
                 if (!MongoUtil.exists(options)) {
@@ -905,38 +971,8 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
                     options.upsert = true
                 }
                 var id = doc._id
-                delete doc._id
                 var update = {$set: doc}
-                try {
-                    return this.updateOne({_id: id}, update, options)
-                } finally {
-                    doc._id = id
-                }
-            }
-        }
-
-        //
-        // Bulk write
-        //
-
-        /**
-         * type can be 'deleteMany', 'deleteOne', 'insertOne', 'replaceOne', 'updateMany', 'updateOne'
-         *
-         * @param {Object} [options]
-         * @param {Boolean} [options.ordered]
-         * @throws {MongoError}
-         */
-        this.bulkWrite = function (operations, options) {
-            try {
-                operations = MongoUtil.writeModels(operations)
-                if (!MongoUtil.exists(options)) {
-                    this.collection.bulkeWrite(operations)
-                } else {
-                    options = MongoUtil.bulkWriteOptions(options)
-                    this.collection.bulkeWrite(operations, options)
-                }
-            } catch (x if !(x instanceof MongoError)) {
-                throw new MongoError(x)
+                return this.updateOne({_id: id}, update, options, aOnSuccess, aOnFailure)
             }
         }
 
@@ -947,24 +983,30 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
         /**
          * @param {Number} [scale]
          * @param {Boolean} [verbose]
+         * @param aOnSuccess Success callback. Called when the operation is completed.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.stats = function (scale, verbose) {
+        this.stats = function (scale, verbose, aOnSuccess, aOnFailure) {
             if (!MongoUtil.exists(scale)) {
                 scale = 1024
             }
             if (!MongoUtil.exists(verbose)) {
                 verbose = false
             }
-            return this.database.command({collStats: this.name, scale: scale, verbose: verbose})
+            this.database.command({collStats: this.name, scale: scale, verbose: verbose}, aOnSuccess, aOnFailure)
         }
 
         /**
-         * @param {String} operation
+         * @param {String} operation Operation name. Can be one of the following: 'count', 'distinct', 'group', 'find', 'findAndModify', 'delete', or 'update'
+         * For more details, see https://docs.mongodb.com/manual/reference/command/explain/#dbcmd.explain
+         * @param {Object} args Additional options of explain command, for example: 'query', 'updtes'.
          * @param {String} [verbosity='allPlansExecution'] 'queryPlanner', 'executionStats', or 'allPlansExecution'
+         * @param aOnSuccess Success callback. Called when the operation is completed.
+         * @param aOnFailure Failure callback. Consumes a failure reason.
          * @throws {MongoError}
          */
-        this.explainRaw = function (operation, args, verbosity) {
+        this.explainRaw = function (operation, args, verbosity, aOnSuccess, aOnFailure) {
             var command = {explain: {}}
             // Note: the order *matters*, and the operation *must* be the first key in the dict
             command.explain[operation] = this.name
@@ -976,7 +1018,7 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
             if (MongoUtil.exists(verbosity)) {
                 command.verbosity = verbosity
             }
-            return this.database.command(command)
+            this.database.command(command, aOnSuccess, aOnFailure)
         }
 
         /**
@@ -995,25 +1037,31 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
             Public.verbosity = null
 
             /**
+             * @param aOnSuccess Success callback. Called when the operation is completed.
+             * @param aOnFailure Failure callback. Consumes a failure reason.
              * @throws {MongoError}
              */
-            Public.find = function (filter) {
+            Public.find = function (filter, aOnSuccess, aOnFailure) {
                 filter = filter || {}
-                return collection.explainRaw('find', {filter: filter}, this.verbosity)
+                return collection.explainRaw('find', {filter: filter}, this.verbosity, aOnSuccess, aOnFailure)
             }
 
             /**
+             * @param aOnSuccess Success callback. Called when the operation is completed.
+             * @param aOnFailure Failure callback. Consumes a failure reason.
              * @throws {MongoError}
              */
-            Public.count = function (filter) {
+            Public.count = function (filter, aOnSuccess, aOnFailure) {
                 filter = filter || {}
-                return collection.explainRaw('count', {query: filter}, this.verbosity)
+                return collection.explainRaw('count', {query: filter}, this.verbosity, aOnSuccess, aOnFailure)
             }
 
             /**
+             * @param aOnSuccess Success callback. Called when the operation is completed.
+             * @param aOnFailure Failure callback. Consumes a failure reason.
              * @throws {MongoError}
              */
-            Public.group = function (args) {
+            Public.group = function (args, aOnSuccess, aOnFailure) {
                 if (!MongoUtil.exists(args.initial)) {
                     args.initial = {}
                 }
@@ -1035,47 +1083,59 @@ define(['./mongo-util', './mongo-error', './mongo-bson', './mongo-async-client',
                 if (MongoUtil.exists(args.finalize)) {
                     group.finalize = String(args.finalize)
                 }
-                return collection.explainRaw('group', {group: group}, this.verbosity)
+                return collection.explainRaw('group', {group: group}, this.verbosity, aOnSuccess, aOnFailure)
             }
 
             /**
+             * @param aOnSuccess Success callback. Called when the operation is completed.
+             * @param aOnFailure Failure callback. Consumes a failure reason.
              * @throws {MongoError}
              */
-            Public.deleteOne = function (filter) {
+            Public.deleteOne = function (filter, aOnSuccess, aOnFailure) {
                 filter = filter || {}
-                return collection.explainRaw('delete', {deletes: [{q: filter, limit: 1}]}, this.verbosity)
+                return collection.explainRaw('delete', {deletes: [{q: filter, limit: 1}]}, this.verbosity, aOnSuccess, aOnFailure)
             }
 
             /**
+             * @param aOnSuccess Success callback. Called when the operation is completed.
+             * @param aOnFailure Failure callback. Consumes a failure reason.
              * @throws {MongoError}
              */
-            Public.deleteMany = function (filter) {
+            Public.deleteMany = function (filter, aOnSuccess, aOnFailure) {
                 filter = filter || {}
-                return collection.explainRaw('delete', {deletes: [{q: filter, limit: 0}]}, this.verbosity)
+                return collection.explainRaw('delete', {deletes: [{q: filter, limit: 0}]}, this.verbosity, aOnSuccess, aOnFailure)
             }
 
             /**
+             * @param aOnSuccess Success callback. Called when the operation is completed.
+             * @param aOnFailure Failure callback. Consumes a failure reason.
              * @throws {MongoError}
              */
-            Public.updateMany = function (filter, update, options) {
-                filter = filter || {}
-                update = update || {}
-                var upsert = MongoUtil.exists(options) && options.upsert
-                return collection.explainRaw('update', {updates: [{q: filter, u: update, upsert: upsert, multi: true}]}, this.verbosity)
-            }
-
-            /**
-             * @throws {MongoError}
-             */
-            Public.updateOne = function (filter, update, options) {
+            Public.updateMany = function (filter, update, options, aOnSuccess, aOnFailure) {
                 filter = filter || {}
                 update = update || {}
                 var upsert = MongoUtil.exists(options) && options.upsert
-                return collection.explainRaw('update', {updates: [{q: filter, u: update, upsert: upsert, multi: false}]}, this.verbosity)
+                return collection.explainRaw('update', {updates: [{q: filter, u: update, upsert: upsert, multi: true}]}, this.verbosity, aOnSuccess, aOnFailure)
+            }
+
+            /**
+             * @param aOnSuccess Success callback. Called when the operation is completed.
+             * @param aOnFailure Failure callback. Consumes a failure reason.
+             * @throws {MongoError}
+             */
+            Public.updateOne = function (filter, update, options, aOnSuccess, aOnFailure) {
+                filter = filter || {}
+                update = update || {}
+                var upsert = MongoUtil.exists(options) && options.upsert
+                return collection.explainRaw('update', {updates: [{q: filter, u: update, upsert: upsert, multi: false}]}, this.verbosity, aOnSuccess, aOnFailure)
             }
 
             return Public
         }(this)
+
+        this.isCapped = function () {
+            return capped;
+        };
     }
     return MongoCollection;
 });
