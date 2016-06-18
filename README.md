@@ -1,2 +1,2 @@
 # mongo-client
-Platypus.js plauggable mongo client
+Platypus.js pluggable mongo client
