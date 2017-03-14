@@ -1,0 +1,56 @@
+apply plugin: 'java'
+
+repositories {
+    jcenter()
+    mavenLocal()
+}
+
+configurations {
+    compile.transitive = false
+    wrappers.transitive = false
+}
+
+def mongoVersion = '3.4.2'
+def platypusJsVersion = '5.11.0'
+
+dependencies {
+    compile     "org.mongodb:mongodb-driver-async:$mongoVersion"
+    testCompile "com.eas.platypus:platypus-js-common-utils:$platypusJsVersion",
+                "com.eas.platypus:platypus-js-scripting:$platypusJsVersion",
+                "com.eas.platypus:platypus-js-launcher:$platypusJsVersion",
+                'junit:junit:4.11'
+    testRuntime "org.mongodb:mongodb-driver:$mongoVersion"
+    wrappers    "com.eas.platypus:platypus-js-wrappers:$platypusJsVersion"
+}
+
+def jsLibsDirName = "${buildDir}/resources/test"
+def jsTestAppDirName = "${projectDir}/src/test/js"
+
+test {
+    forkEvery = 1
+    systemProperties["source.url"] = file(jsTestAppDirName).toURI().toURL()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main/java', 'src/main/js']
+        }
+    }
+    test {
+        java {
+            srcDirs = ['src/test/java', 'src/test/js']
+        }
+        resources {
+            srcDirs = ['src/main/js']
+        }
+    }
+}
+
+task extractPlatypusJs(type: Copy) {
+    configurations.wrappers.each {
+        from zipTree(file(it.getAbsolutePath()))
+    }
+    into jsLibsDirName
+}
+test.dependsOn extractPlatypusJs

@@ -1,4 +1,3 @@
-target
-WEB-INF
-web
-private.properties
+.gradle
+.nb-gradle
+build
