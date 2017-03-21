@@ -1,7 +1,7 @@
 {
   "name": "platypus-js-mongo-client",
   "homepage": "https://github.com/marat-gainullin/platypus-js-mongo-client",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "",
   "moduleType": ["amd"],
   "main": ["src/main/js/mongo-async-client.js"],
