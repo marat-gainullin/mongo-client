@@ -1,7 +1,9 @@
 {
   "name": "platypus-js-mongo-client",
   "homepage": "https://github.com/marat-gainullin/platypus-js-mongo-client",
+  "version": "0.0.3",
   "description": "",
+  "moduleType": ["amd"],
   "main":[
         "src/main/js/mongo-async-client.js",
         "src/main/js/mongo-async-collection.js",
@@ -29,7 +31,15 @@
   "license": "Apache 2.0",
   "ignore": [
     "**/.*",
+    "gradle",
+    ".gitignore",
+    "bower.json",
+    "build.gradle",
+    "gradle.properties",
+    "gradlew",
+    "gradlew.bat",
+    "README.md",
     "src/test",
     "src/main/java"
-  ]
+  ],
 }
