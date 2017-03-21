@@ -55,5 +55,5 @@ Finally, you need to create `bower.json` file in the root of your project and ad
   }
 ```
 The `install` section is used by `bower-installer` to get rid of long pathnames and also to
-comform [Platypus.js](https://github.com/marat-gainullin/platypus-js) convention about JavaScript libraries
+conform [Platypus.js](https://github.com/marat-gainullin/platypus-js) convention about JavaScript libraries
 location within of your project and JavaEE conventions about layout of web application projects.
