@@ -1,31 +1,20 @@
 # mongo-client
 Platypus.js pluggable mongo client
 
-
-## Using the mongo client
+## Using the mongo client in gradle project
 Yo use this mongo client, you should add this dependency to your runtime dependencies:
 ```
 runtime com.bearsoft.mongo:platypus-js-mongo-client:0.0.1
 ```
-This will install jar artifacts of mongo client Pltypus.js API artifact in dependencies of ypur project.
-Also you need to use scripts artifacts wich can be included to script dependencies as follows:
-```
-clientDependencies {
-    npm {
-        'mongo'('0.0.1',
-            url: 'marat-gainullin/platypus-js-mongo-client.git',
-            from: 'src/main/js'
-        )
-    }
-    installDir = 'src/WEB-INF/classes'
-}
-```
-This will create mongo-client *.js files in src/WEB-INF/classes folder
+This will install jar artifacts of mongo client Pltypus.js API in dependencies of your project.
+Also you need to use scripts artifacts wich should be be added to script dependencies.
+This may be done in two ways:
+- Through Gradle client dependencies plugin.
+- Through `bower` package manager.
 
-## Notes
-
-To use repositories like Bower with Gradle, you need this [gradle plugin](https://github.com/craigburke/client-dependencies-gradle/blob/master/README.adoc).
-To use it you should ensure, that the following is included in your build script:
+### Using gradle client dependencies plugin
+First you need [client dependencies gradle plugin](https://github.com/craigburke/client-dependencies-gradle/blob/master/README.adoc).
+To use it include the following in your build script:
 ```
 buildscript {
     repositories {
@@ -38,3 +27,32 @@ buildscript {
 
 apply plugin: 'com.craigburke.client-dependencies'
 ```
+Then you need to configure your `bower` dependency as follows:
+```
+clientDependencies {
+    installDir= 'src/WEB-INF/classes'
+    bower {
+        'platypus-js-mongo-client'('0.0.7', from: 'src/main/js')
+    }
+}
+war.dependsOn clientInstall
+```
+This will create mongo client `*.js` files in `src/WEB-INF/classes/platypus-js-mongo-client` folder
+
+### Using bower package manager
+First of all you need [bower](https://bower.io) to be installed. Than you need install bower package manager.
+Than you need to create `bower.json` file in the root of your project and add the following there:
+```
+  "dependencies": {
+    "platypus-js-mongo-client": "0.0.7"
+  },
+  "install": {
+    "path": "src/WEB-INF/classes",
+    "sources": {
+      "platypus-js-mongo-client": "bower_components/platypus-js-mongo-client/src/main/js/*.js"
+    }
+  }
+```
+The `install` section is used by [bower-installer](https://www.npmjs.com/package/bower-installer) to get rid of long pathnames and also to
+comform [Platypus.js](https://github.com/marat-gainullin/platypus-js) convention about JavaScript libraries location within of your project and
+JavaEE conventions about layout of web application projects.
