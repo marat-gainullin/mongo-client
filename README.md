@@ -1,6 +1,6 @@
-# Platypus.js pluggable mongo client
-This is JavaScript library for Nashorn JavaScript engine and
-can be used in [Platypus.js](https://github.com/marat-gainullin/platypus-js) environment.
+# Platypus.js mongo client
+This is JavaScript library for Nashorn JavaScript engine.
+It can be used in [Platypus.js](https://github.com/marat-gainullin/platypus-js) environment.
 
 ## Using the mongo client in gradle project
 To use this mongo client, you should add this dependency to your runtime dependencies:
@@ -8,7 +8,7 @@ To use this mongo client, you should add this dependency to your runtime depende
 runtime com.bearsoft.mongo:platypus-js-mongo-client:0.0.1
 ```
 This will install jar artifacts of mongo client Pltypus.js API in dependencies of your project.
-Also you need to use script artifacts. They are registered in `bower`and can be added to script
+Also you need to use script artifacts. They are registered in [bower](https://bower.io) and can be added to script
 dependencies in two ways:
 - Through [client dependencies gradle plugin](https://github.com/craigburke/client-dependencies-gradle/blob/master/README.adoc).
 - Through bower package manager.
@@ -41,7 +41,7 @@ war.dependsOn clientInstall
 This will create mongo client `*.js` files in `src/WEB-INF/classes/platypus-js-mongo-client` folder
 
 ### Using bower package manager
-First of all you need [bower](https://bower.io) package manager to be installed. Than you need to install [bower-installer](https://www.npmjs.com/package/bower-installer).
+First of all you need [bower package manager](https://bower.io) to be installed. Than you need to install [bower-installer](https://www.npmjs.com/package/bower-installer).
 Finally, you need to create `bower.json` file in the root of your project and add the following to it:
 ```
   "dependencies": {
