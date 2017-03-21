@@ -28,6 +28,8 @@
   ],
   "license": "Apache 2.0",
   "ignore": [
-    "gradlew.bat"
+    "**/.*",
+    "src/test",
+    "src/main/java"
   ]
 }
