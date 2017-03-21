@@ -1,4 +1,33 @@
 {
-    "name": "platypus-js-mongo-client",
-    "version": "0.0.1"
+  "name": "platypus-js-mongo-client",
+  "homepage": "https://github.com/marat-gainullin/platypus-js-mongo-client",
+  "description": "",
+  "main":[
+        "src/main/js/mongo-async-client.js",
+        "src/main/js/mongo-async-collection.js",
+        "src/main/js/mongo-async-database.js",
+        "src/main/js/mongo-async.js",
+        "src/main/js/mongo-bson.js",
+        "src/main/js/mongo-client.js",
+        "src/main/js/mongo-collection.js",
+        "src/main/js/mongo-cursor.js",
+        "src/main/js/mongo-database.js",
+        "src/main/js/mongo-error.js",
+        "src/main/js/mongo-script-util.js",
+        "src/main/js/mongo-util.js",
+    ],
+  "keywords": [
+    "js",
+    "nashorn",
+    "java",
+    "oracle",
+    "postgres"
+  ],
+  "authors": [
+    "Marat F. Gainullin"
+  ],
+  "license": "Apache 2.0",
+  "ignore": [
+    "*"
+  ]
 }
